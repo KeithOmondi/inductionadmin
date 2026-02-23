@@ -43,29 +43,35 @@ const Login: React.FC = () => {
     }
   }, [error, dispatch]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!email.trim() || !password.trim()) {
-      toast.error("Registry credentials required");
-      return;
-    }
+  console.log("[LOGIN FORM SUBMIT] email:", email); // ✅ clg added
+  console.log("[LOGIN FORM SUBMIT] password length:", password.length); // safe, no full password
 
-    const toastId = toast.loading("Verifying with High Court Registry...");
+  if (!email.trim() || !password.trim()) {
+    toast.error("Registry credentials required");
+    return;
+  }
 
-    try {
-      await dispatch(
-        loginUser({
-          email: email.trim(),
-          password: password.trim(),
-        }),
-      ).unwrap();
+  const toastId = toast.loading("Verifying with High Court Registry...");
 
-      toast.success("Identity Verified", { id: toastId });
-    } catch (err: any) {
-      toast.error(err || "Access Denied", { id: toastId });
-    }
-  };
+  try {
+    const resultAction = await dispatch(
+      loginUser({
+        email: email.trim(),
+        password: password.trim(),
+      })
+    ).unwrap();
+
+    console.log("[LOGIN SUCCESS] Redux action result:", resultAction); // ✅ clg added
+
+    toast.success("Identity Verified", { id: toastId });
+  } catch (err: any) {
+    console.log("[LOGIN FAILED] Error:", err); // ✅ clg added
+    toast.error(err || "Access Denied", { id: toastId });
+  }
+};
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-50 flex items-center justify-center relative fixed inset-0">
