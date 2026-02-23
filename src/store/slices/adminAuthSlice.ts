@@ -1,89 +1,80 @@
-// src/store/slices/authSlice.ts
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../api/axios";
 
 /* ===========================
    TYPES
 =========================== */
-
 export interface User {
   _id: string;
   name: string;
   email: string;
-  role: "admin" | "judge" | "guest"; // reflect all possible roles
+  role: "admin" | "judge" | "guest";
 }
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   error: string | null;
+  isInitialized: boolean; // Tracks if we've attempted the first refresh
 }
-
-/* ===========================
-   INITIAL STATE
-=========================== */
 
 const initialState: AuthState = {
   user: null,
   loading: false,
   error: null,
+  isInitialized: false,
 };
 
 /* ===========================
-   1️⃣ LOGIN (NORMAL / TEMP)
-      Frontend sends credentials or temp token
+   ASYNC THUNKS
 =========================== */
 
+// Standard Login
 export const loginUser = createAsyncThunk<User, { email: string; password: string }, { rejectValue: string }>(
   "auth/loginUser",
   async ({ email, password }, { rejectWithValue }) => {
     try {
-      const res = await api.post("/auth/login", { email, password }, { withCredentials: true });
-      // Backend returns user object (cookies hold token)
-      return res.data.user as User;
+      // Note: withCredentials is now handled globally in your axios instance (recommended)
+      const res = await api.post("/auth/login", { email, password });
+      return res.data.user;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || "Authentication failed. Please verify credentials.");
+      return rejectWithValue(err.response?.data?.message || "Invalid credentials.");
     }
   }
 );
 
+// Temporary Login (First time setup)
 export const tempLoginUser = createAsyncThunk<User, { email: string; token: string; newPassword: string }, { rejectValue: string }>(
   "auth/tempLoginUser",
-  async ({ email, token, newPassword }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const res = await api.post("/auth/temp-login", { email, token, newPassword }, { withCredentials: true });
-      return res.data.user as User;
+      const res = await api.post("/auth/temp-login", payload);
+      return res.data.user;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || "Temporary login failed.");
     }
   }
 );
 
-/* ===========================
-   2️⃣ REFRESH SESSION
-=========================== */
-
+// Session Refresh (The one causing 401s)
 export const refreshUser = createAsyncThunk<User, void, { rejectValue: string }>(
   "auth/refreshUser",
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.post("/auth/refresh", {}, { withCredentials: true });
-      return res.data.user as User;
+      const res = await api.post("/auth/refresh");
+      return res.data.user;
     } catch (err: any) {
-      return rejectWithValue("Session expired. Please re-authenticate.");
+      // We don't return a custom string here to avoid UI error messages on boot
+      return rejectWithValue("NO_SESSION"); 
     }
   }
 );
-
-/* ===========================
-   3️⃣ LOGOUT (SINGLE DEVICE)
-=========================== */
 
 export const logoutUser = createAsyncThunk<void, void, { rejectValue: string }>(
   "auth/logoutUser",
   async (_, { rejectWithValue }) => {
     try {
-      await api.post("/auth/logout", {}, { withCredentials: true });
+      await api.post("/auth/logout");
     } catch (err: any) {
       return rejectWithValue("Logout failed.");
     }
@@ -98,16 +89,16 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setUser: (state, action: PayloadAction<User | null>) => {
-      state.user = action.payload;
-    },
     clearError: (state) => {
       state.error = null;
     },
+    clearUser: (state) => {
+      state.user = null;
+    }
   },
   extraReducers: (builder) => {
     builder
-      /* ===== LOGIN ===== */
+      /* LOGIN */
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -118,53 +109,33 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.user = null;
-        state.error = action.payload ?? "Internal Server Error";
+        state.error = action.payload as string;
       })
 
-      /* ===== TEMP LOGIN ===== */
-      .addCase(tempLoginUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(tempLoginUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.user = action.payload;
-      })
-      .addCase(tempLoginUser.rejected, (state, action) => {
-        state.loading = false;
-        state.user = null;
-        state.error = action.payload ?? "Temporary login failed";
-      })
-
-      /* ===== REFRESH ===== */
+      /* REFRESH - Handled Silently */
       .addCase(refreshUser.pending, (state) => {
         state.loading = true;
       })
       .addCase(refreshUser.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload;
+        state.isInitialized = true;
       })
       .addCase(refreshUser.rejected, (state) => {
         state.loading = false;
         state.user = null;
+        state.isInitialized = true; 
+        // We set error to null because a 401 refresh is just a "guest" state
+        state.error = null; 
       })
 
-      /* ===== LOGOUT ===== */
-      .addCase(logoutUser.pending, (state) => {
-        state.loading = true;
-      })
+      /* LOGOUT */
       .addCase(logoutUser.fulfilled, (state) => {
-        state.loading = false;
         state.user = null;
-        state.error = null;
-      })
-      .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload ?? "Logout failed";
       });
   },
 });
 
-export const { setUser, clearError } = authSlice.actions;
+export const { clearError, clearUser } = authSlice.actions;
 export default authSlice.reducer;
