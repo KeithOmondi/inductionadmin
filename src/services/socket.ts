@@ -5,19 +5,22 @@ let socket: Socket | null = null;
 
 /**
  * Initialize socket connection for a user
- * @returns Socket instance
  */
-export const initSocket = (userId: string, token: string): Socket => {
+export const initSocket = (userId: string): Socket => {
   if (!socket) {
     socket = io(import.meta.env.VITE_API_URL as string, {
-      auth: { token },
+      withCredentials: true, // ✅ send cookies
     });
 
-    // Setup user after connecting
-    socket.emit("setup", { _id: userId });
+    socket.on("connect", () => {
+      console.log("✅ Socket connected:", socket?.id);
+
+      // Setup user after connection
+      socket?.emit("setup", { _id: userId });
+    });
 
     socket.on("connected", (data) => {
-      console.log("✅ Socket connected. Online users:", data.onlineUsers);
+      console.log("✅ Online users:", data.onlineUsers);
     });
 
     socket.on("presence:online", ({ userId }) => {

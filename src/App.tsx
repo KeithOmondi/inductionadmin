@@ -11,14 +11,12 @@ const AppContent = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // 🔹 token is stored separately now
+  // ✅ single selector
   const user = useSelector((state: RootState) => state.auth.user);
-  const token = useSelector((state: RootState) => state.auth.token);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Restore session via refresh token cookie
         await dispatch(refreshUser()).unwrap();
       } catch (error) {
         console.log("No active session restored.");
@@ -30,13 +28,12 @@ const AppContent = () => {
     initAuth();
   }, [dispatch]);
 
-  // 🔹 Initialize socket after user and token are ready
+  // ✅ socket init (cookie-based auth)
   useEffect(() => {
-    if (user?._id && token) {
-      // initSocket does NOT return a socket, so no need to call disconnect
-      initSocket(user._id, token);
+    if (user?._id) {
+      initSocket(user._id);
     }
-  }, [user, token]);
+  }, [user]);
 
   if (isInitializing) {
     return (

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-import type { AppDispatch, RootState } from "../store/store";
+import type { AppDispatch, RootState } from "../../store/store";
 import {
   sendMessage,
   clearError,
@@ -22,9 +22,9 @@ import {
   fetchGroups,
   receiveMessage,
   resetChatMessages,
-} from "../store/slices/adminMessageSlice"; 
-import { fetchUsers } from "../store/slices/adminUserSlice";
-import { getSocket } from "../services/socket";
+} from "../../store/slices/adminMessageSlice"; 
+import { fetchUsers } from "../../store/slices/adminUserSlice";
+import { getSocket } from "../../services/socket";
 
 const AdminMessages: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchFiles, uploadFile, deleteFile } from "../store/slices/filesSlice";
-import type { AppDispatch, RootState } from "../store/store";
+import { fetchFiles, uploadFile, deleteFile } from "../../store/slices/filesSlice";
+import type { AppDispatch, RootState } from "../../store/store";
 
 const AdminFiles = () => {
   const dispatch = useDispatch<AppDispatch>();
