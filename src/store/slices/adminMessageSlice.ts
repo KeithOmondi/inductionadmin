@@ -8,27 +8,32 @@ import { api } from "../../api/axios";
 // ==========================
 // Types
 // ==========================
-interface User {
+export interface User {
   _id: string;
   name: string;
   email: string;
   role?: string;
+  isActive: boolean;
 }
 
-interface Message {
+export interface Message {
   _id: string;
   sender: User | string;
   receiver?: User | string;
-  group?: any;
+  group?: string;
   text?: string;
   imageUrl?: string;
-  senderType: "admin" | "user";
+  senderType: "admin" | "user" | "judge";
   readBy: string[];
-  deliveryStatus: string;
+  status: "sent" | "delivered" | "read";
+  isEdited?: boolean;
+  isDeleted?: boolean;
+  isBroadcast?: boolean;
   createdAt: string;
+  updatedAt: string;
 }
 
-interface Group {
+export interface Group {
   _id: string;
   name: string;
   description?: string;
@@ -39,20 +44,25 @@ interface Group {
 }
 
 interface AdminChatState {
-  messages: Message[];
-  chatMessages: Message[];
+  messages: Message[];      // Global message history/logs
+  chatMessages: Message[];  // Active conversation messages
+  unreadCount: number;      // Tracking unread incoming messages
   groups: Group[];
-  stats: any;
+  stats: Record<string, any>;
   loading: boolean;
   error?: string;
-  totalMessages?: number;
-  page?: number;
-  pages?: number;
+  totalMessages: number;
+  page: number;
+  pages: number;
 }
 
+// ==========================
+// Initial State
+// ==========================
 const initialState: AdminChatState = {
   messages: [],
   chatMessages: [],
+  unreadCount: 0,
   groups: [],
   stats: {},
   loading: false,
@@ -66,70 +76,72 @@ const initialState: AdminChatState = {
 // Async Thunks
 // ==========================
 
-export const fetchAllMessages = createAsyncThunk(
-  "adminChat/fetchAllMessages",
-  async (
-    params: {
-      page?: number;
-      limit?: number;
-      senderType?: string;
-      isDeleted?: boolean;
-    },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.get("/chat/admin/messages", { params });
-      return data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+/**
+ * Fetch global message registry (for logs/stats)
+ */
+export const fetchAllMessages = createAsyncThunk<
+  { messages: Message[]; total: number; page: number; pages: number },
+  { page?: number; limit?: number; senderType?: string; isDeleted?: boolean }
+>("adminChat/fetchAllMessages", async (params, { rejectWithValue }) => {
+  try {
+    const { data } = await api.get("/chat/admin/messages", { params });
+    return data;
+  } catch (err: any) {
+    return rejectWithValue(err.response?.data?.message || err.message);
+  }
+});
+
+/**
+ * Fetch messages for a specific interaction (Private or Broadcast)
+ */
+export const fetchChatMessages = createAsyncThunk<
+  { messages: Message[]; total: number; page: number; pages: number },
+  { 
+    receiverId?: string; 
+    isBroadcast?: boolean; 
+    page?: number; 
+    limit?: number 
+  }
+>("adminChat/fetchChatMessages", async (params, { rejectWithValue }) => {
+  try {
+    const { data } = await api.get("/chat/chat/messages", { params });
+    return data;
+  } catch (err: any) {
+    return rejectWithValue(err.response?.data?.message || err.message);
+  }
+});
+
+/**
+ * Send a message (Handles Direct and Broadcast)
+ */
+export const sendMessage = createAsyncThunk<
+  Message,
+  { receiver?: string; text?: string; image?: File; isBroadcast?: boolean }
+>("adminChat/sendMessage", async (payload, { rejectWithValue }) => {
+  try {
+    const formData = new FormData();
+
+    if (!payload.isBroadcast && payload.receiver) {
+      formData.append("receiver", payload.receiver);
     }
-  },
-);
-
-export const fetchChatMessages = createAsyncThunk(
-  "adminChat/fetchChatMessages",
-  async (
-    params: {
-      receiverId?: string;
-      groupId?: string;
-      page?: number;
-      limit?: number;
-    },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.get("/chat/chat/messages", { params });
-      return data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+    
+    if (payload.text) formData.append("text", payload.text);
+    if (payload.image) formData.append("image", payload.image);
+    
+    if (payload.isBroadcast !== undefined) {
+      formData.append("isBroadcast", String(payload.isBroadcast));
     }
-  },
-);
 
-export const sendMessage = createAsyncThunk(
-  "adminChat/sendMessage",
-  async (
-    payload: { receiver?: string; group?: string; text?: string; image?: File },
-    { rejectWithValue },
-  ) => {
-    try {
-      const formData = new FormData();
-      if (payload.receiver) formData.append("receiver", payload.receiver);
-      if (payload.group) formData.append("group", payload.group);
-      if (payload.text) formData.append("text", payload.text);
-      if (payload.image) formData.append("image", payload.image);
+    const { data } = await api.post("/chat/admin/send", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  } catch (err: any) {
+    return rejectWithValue(err.response?.data?.message || err.message);
+  }
+});
 
-      const { data } = await api.post("/chat/admin/send", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      return data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  },
-);
-
-export const fetchStats = createAsyncThunk(
+export const fetchStats = createAsyncThunk<Record<string, any>>(
   "adminChat/fetchStats",
   async (_, { rejectWithValue }) => {
     try {
@@ -138,83 +150,7 @@ export const fetchStats = createAsyncThunk(
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || err.message);
     }
-  },
-);
-
-export const createGroup = createAsyncThunk(
-  "adminChat/createGroup",
-  async (
-    payload: { name: string; description?: string; members?: string[] },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.post("/chat/groups/create", payload);
-      return data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  },
-);
-
-export const updateGroup = createAsyncThunk(
-  "adminChat/updateGroup",
-  async (
-    { groupId, updates }: { groupId: string; updates: any },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.patch(`/chat/groups/${groupId}`, updates);
-      return data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  },
-);
-
-export const addMembers = createAsyncThunk(
-  "adminChat/addMembers",
-  async (
-    { groupId, userIds }: { groupId: string; userIds: string[] },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.post(`/chat/groups/${groupId}/members`, {
-        userIds,
-      });
-      return data.group;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  },
-);
-
-export const removeMember = createAsyncThunk(
-  "adminChat/removeMember",
-  async (
-    { groupId, userId }: { groupId: string; userId: string },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.delete(
-        `/chat/groups/${groupId}/members/${userId}`,
-      );
-      return data.group;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  },
-);
-
-export const fetchGroups = createAsyncThunk(
-  "adminChat/fetchGroups",
-  async (_, { rejectWithValue }) => {
-    try {
-      const { data } = await api.get("/chat/groups");
-      return data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
-  },
+  }
 );
 
 // ==========================
@@ -227,97 +163,88 @@ const adminChatSlice = createSlice({
     clearError(state) {
       state.error = undefined;
     },
-    // 🔹 Matches component: dispatch(resetChatMessages())
     resetChatMessages(state) {
       state.chatMessages = [];
     },
-    // 🔹 Matches component: dispatch(receiveMessage(msg))
+    /**
+     * Resets the notification badge count
+     */
+    clearUnreadCount(state) {
+      state.unreadCount = 0;
+    },
+    /**
+     * Real-time socket update handler.
+     * Logic: Only increment unreadCount if the message is from a user/judge.
+     */
     receiveMessage(state, action: PayloadAction<Message>) {
       const exists = state.chatMessages.find(
-        (m) => m._id === action.payload._id,
+        (m) => m._id === action.payload._id
       );
+
       if (!exists) {
         state.chatMessages.push(action.payload);
+        
+        // Notification Logic
+        if (action.payload.senderType !== "admin") {
+          state.unreadCount += 1;
+        }
+
+        // Global Logging Logic
+        if (action.payload.isBroadcast) {
+          state.messages.unshift(action.payload);
+        }
       }
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAllMessages.pending, (state) => {
-        state.loading = true;
-        state.error = undefined;
-      })
-      .addCase(
-        fetchAllMessages.fulfilled,
-        (state, action: PayloadAction<any>) => {
-          state.loading = false;
-          state.messages = action.payload.messages;
-          state.totalMessages = action.payload.total;
-          state.page = action.payload.page;
-          state.pages = action.payload.pages;
-        },
-      )
-      .addCase(fetchAllMessages.rejected, (state, action) => {
+      .addCase(fetchAllMessages.fulfilled, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.messages = action.payload.messages;
+        state.totalMessages = action.payload.total;
+        state.page = action.payload.page;
+        state.pages = action.payload.pages;
       })
-
       .addCase(fetchChatMessages.pending, (state) => {
         state.loading = true;
         state.error = undefined;
       })
-      .addCase(
-        fetchChatMessages.fulfilled,
-        (state, action: PayloadAction<any>) => {
-          state.loading = false;
-          state.chatMessages = action.payload.messages;
-          state.totalMessages = action.payload.total;
-          state.page = action.payload.page;
-          state.pages = action.payload.pages;
-        },
-      )
+      .addCase(fetchChatMessages.fulfilled, (state, action) => {
+        state.loading = false;
+        state.chatMessages = action.payload.messages;
+        state.totalMessages = action.payload.total;
+        state.page = action.payload.page;
+        state.pages = action.payload.pages;
+      })
       .addCase(fetchChatMessages.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-
       .addCase(sendMessage.pending, (state) => {
         state.loading = true;
-        state.error = undefined;
       })
-      .addCase(
-        sendMessage.fulfilled,
-        (state, action: PayloadAction<Message>) => {
-          state.loading = false;
-          // Optional: Check existence even here to be safe
-          const exists = state.chatMessages.find(
-            (m) => m._id === action.payload._id,
-          );
-          if (!exists) state.chatMessages.push(action.payload);
-        },
-      )
+      .addCase(sendMessage.fulfilled, (state, action) => {
+        state.loading = false;
+        const exists = state.chatMessages.find(
+          (m) => m._id === action.payload._id
+        );
+        if (!exists) state.chatMessages.push(action.payload);
+      })
       .addCase(sendMessage.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
-
-      .addCase(fetchStats.fulfilled, (state, action: PayloadAction<any>) => {
-        state.loading = false;
+      .addCase(fetchStats.fulfilled, (state, action) => {
         state.stats = action.payload;
-      })
-
-      .addCase(createGroup.fulfilled, (state, action: PayloadAction<Group>) => {
-        state.groups.push(action.payload);
-      })
-      .addCase(
-        fetchGroups.fulfilled,
-        (state, action: PayloadAction<Group[]>) => {
-          state.groups = action.payload;
-        },
-      );
+      });
   },
 });
 
-export const { clearError, resetChatMessages, receiveMessage } =
-  adminChatSlice.actions;
+export const { 
+  clearError, 
+  resetChatMessages, 
+  receiveMessage, 
+  clearUnreadCount 
+} = adminChatSlice.actions;
+
 export default adminChatSlice.reducer;

@@ -1,41 +1,54 @@
-// src/services/socket.ts
 import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
 
-/**
- * Initialize socket connection for a user
- */
 export const initSocket = (userId: string): Socket => {
   if (!socket) {
-    socket = io(import.meta.env.VITE_API_URL as string, {
-      withCredentials: true, // ✅ send cookies
+    console.log("🧠 initSocket called with:", userId);
+
+    const rawUrl = import.meta.env.VITE_API_URL as string;
+
+    // Remove /api or /api/v1 safely (with or without trailing slash)
+    const SOCKET_URL = rawUrl
+      ? rawUrl.replace(/\/api\/v1\/?$/, "").replace(/\/api\/?$/, "")
+      : "http://localhost:8000";
+
+    console.log("🌍 RAW API URL:", rawUrl);
+    console.log("🔌 SOCKET URL:", SOCKET_URL);
+
+    socket = io(SOCKET_URL, {
+      withCredentials: true,
+      transports: ["websocket"], // Ensures WS appears in Network tab
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     });
 
+    // ---------------- CONNECT ----------------
     socket.on("connect", () => {
       console.log("✅ Socket connected:", socket?.id);
 
-      // Setup user after connection
+      console.log("📡 Emitting setup with:", userId);
       socket?.emit("setup", { _id: userId });
     });
 
-    socket.on("connected", (data) => {
-      console.log("✅ Online users:", data.onlineUsers);
+    // ---------------- DISCONNECT ----------------
+    socket.on("disconnect", (reason) => {
+      console.log("🔌 Socket disconnected:", reason);
     });
 
-    socket.on("presence:online", ({ userId }) => {
-      console.log(`🟢 User ${userId} is online`);
+    // ---------------- RECONNECT ----------------
+    socket.io.on("reconnect_attempt", (attempt) => {
+      console.log("🔄 Reconnect attempt:", attempt);
     });
 
-    socket.on("presence:offline", ({ userId, lastSeen }) => {
-      console.log(`⚫ User ${userId} went offline at ${lastSeen}`);
+    // ---------------- ERROR ----------------
+    socket.on("connect_error", (err: any) => {
+      console.error("❌ Socket Connection Error:", err.message);
+      console.error("FULL ERROR:", err);
     });
   }
 
   return socket;
 };
 
-/**
- * Get the existing socket instance
- */
 export const getSocket = (): Socket | null => socket;

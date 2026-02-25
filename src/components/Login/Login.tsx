@@ -95,7 +95,7 @@ const Login: React.FC = () => {
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-serif font-bold text-[#355E3B] leading-tight">
-            THE JUDICIARY
+            HIGH COURT OF KENYA
           </h1>
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#C5A059] mt-1">
             High Court of Kenya

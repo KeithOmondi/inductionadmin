@@ -1,4 +1,3 @@
-// src/services/messageService.ts
 import axios from "axios";
 import { getSocket } from "./socket";
 
@@ -11,6 +10,7 @@ export const sendMessageAPI = async (payload: {
   file?: File;
 }) => {
   const formData = new FormData();
+
   if (payload.receiver) formData.append("receiver", payload.receiver);
   if (payload.group) formData.append("group", payload.group);
   if (payload.text) formData.append("text", payload.text);
@@ -18,12 +18,26 @@ export const sendMessageAPI = async (payload: {
 
   const { data } = await axios.post(`${API_URL}/messages`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    withCredentials: true,
   });
 
   return data;
 };
 
+// ---------------- SOCKET LISTENER ----------------
 export const onMessageReceived = (callback: (message: any) => void) => {
   const socket = getSocket();
-  socket?.on("message:new", callback);
+
+  if (!socket) {
+    console.warn("⚠️ Socket not initialized yet");
+    return;
+  }
+
+  console.log("👂 Listening for message:new on socket:", socket.id);
+
+  socket.off("message:new"); // Prevent duplicate listeners
+  socket.on("message:new", (msg) => {
+    console.log("📩 message:new received:", msg);
+    callback(msg);
+  });
 };

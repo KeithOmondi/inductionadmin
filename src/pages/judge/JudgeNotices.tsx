@@ -48,7 +48,7 @@ const JudgeNoticesPage = () => {
           Notice Board
         </h1>
         <p className="text-slate-500 text-sm font-medium">
-          Official documents, circulars and publications from the Judiciary
+          Official documents, circulars and publications from the ORHC
         </p>
       </div>
 
@@ -154,12 +154,6 @@ const JudgeNoticesPage = () => {
       <div className="bg-[#C5A059]/5 border border-[#C5A059]/20 p-6 rounded-2xl flex items-center gap-4">
         <div className="p-3 bg-white rounded-full text-[#C5A059] shadow-sm">
           <FileText size={24} />
-        </div>
-        <div>
-          <h4 className="text-[#355E3B] font-bold text-sm">Archived Notices</h4>
-          <p className="text-slate-500 text-xs">
-            For documents older than 6 months, contact registry archives.
-          </p>
         </div>
       </div>
     </div>

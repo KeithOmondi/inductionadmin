@@ -78,14 +78,24 @@ export const refreshUser = createAsyncThunk<
 >(
   "auth/refreshUser",
   async (_, { rejectWithValue }) => {
-    console.log("[THUNK REFRESH] Attempting session refresh"); // ✅ clg
+    console.log("[THUNK REFRESH] Attempting session refresh");
+
     try {
-      const res = await api.post("/auth/refresh");
-      console.log("[THUNK REFRESH] Refresh successful:", res.data.user); // ✅ clg
+      const res = await api.post(
+        "/auth/refresh",
+        {},
+        { withCredentials: true } // ✅ CRITICAL FIX
+      );
+
+      console.log("[THUNK REFRESH] Refresh successful:", res.data.user);
       return res.data.user;
     } catch (err: any) {
-      console.log("[THUNK REFRESH] Refresh failed:", err.response?.status, err.response?.data); // ✅ clg
-      return rejectWithValue("NO_SESSION"); // silent fail
+      console.log(
+        "[THUNK REFRESH] Refresh failed:",
+        err.response?.status,
+        err.response?.data
+      );
+      return rejectWithValue("NO_SESSION");
     }
   }
 );

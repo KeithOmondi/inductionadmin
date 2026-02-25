@@ -87,8 +87,8 @@ const handleContactSubmit = () => {
       {/* Header logic remains same */}
       <header className="border-b border-slate-200 pb-6 flex justify-between items-end">
         <div>
-          <h1 className="text-[#355E3B] font-serif text-3xl font-bold italic">Registry Configuration</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium font-serif">Official Judicial Information & Directory Management</p>
+          <h1 className="text-[#355E3B] font-serif text-3xl font-bold italic">High Court Information</h1>
+          <p className="text-slate-500 text-sm mt-1 font-medium font-serif">Office of the Registrar High Court</p>
         </div>
         {loading && <span className="text-[10px] font-black text-[#C5A059] animate-pulse">SYNCING DATA...</span>}
       </header>
@@ -199,7 +199,7 @@ const handleContactSubmit = () => {
             <div className="bg-slate-900 px-6 py-4 flex justify-between items-center">
               <div className="flex items-center gap-2 text-[#C5A059]">
                 <ContactIcon size={18} />
-                <h2 className="font-bold text-xs uppercase tracking-widest">Registry Directory</h2>
+                <h2 className="font-bold text-xs uppercase tracking-widest">ORHC Contacts</h2>
               </div>
               <button 
                 onClick={() => { setIsAddingContact(true); setEditContactId(null); setContactForm({title: "", detail: "", sub: ""}); }} 

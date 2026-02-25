@@ -14,7 +14,6 @@ import JudgeLayout from "../components/judge/JudgeLayout";
 import JudgeGuestsPage from "../pages/judge/JudgeGuests";
 import JudgeNoticesPages from "../pages/judge/JudgeNotices";
 import JudgeEventsPage from "../pages/judge/JudgeEvents";
-import JudgeSettingsPage from "../pages/judge/JudgeSettings";
 import CourtInformation from "../pages/judge/CourtInformation";
 import AdminCourtInfo from "../pages/admin/AdminCourtInfo";
 import AdminGuestList from "../pages/admin/AdminGuestList";
@@ -63,7 +62,6 @@ export default function AppRoutes() {
         <Route path="messages" element={<JudgeMessagePage />} />
         <Route path="notices" element={<JudgeNoticesPages />} />
         <Route path="events" element={<JudgeEventsPage />} />
-        <Route path="settings" element={<JudgeSettingsPage />} />
 
         {/* Default redirect for /judge */}
         <Route index element={<Navigate to="dashboard" replace />} />

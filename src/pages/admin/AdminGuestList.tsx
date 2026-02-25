@@ -75,8 +75,8 @@ const AdminGuestList: React.FC = () => {
       {/* Header & Stats */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200 pb-8">
         <div>
-          <h1 className="text-[#355E3B] font-serif text-3xl font-bold mb-2 tracking-tight">Ceremony Oversight</h1>
-          <p className="text-slate-500 text-xs font-black uppercase tracking-widest">Executive View — Registry Access Level 4</p>
+          <h1 className="text-[#355E3B] font-serif text-3xl font-bold mb-2 tracking-tight">Guest Registration</h1>
+          <p className="text-slate-500 text-xs font-black uppercase tracking-widest">High Court Guest Registration Form</p>
         </div>
         <div className="flex flex-wrap gap-4">
           <StatCard icon={<ShieldCheck size={18} />} label="Total Entries" value={totalSubmissions} />

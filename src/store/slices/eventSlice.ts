@@ -1,9 +1,11 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../api/axios";
 
-/* ================= TYPES ================= */
+/* ================= FILTER TYPE ================= */
 
-export type EventType = "DEADLINE" | "CEREMONY" | "INDUCTION" | "OTHER";
+export type EventFilter = "UPCOMING" | "PAST" | "RECENT" | "ALL";
+
+/* ================= EVENT INTERFACE ================= */
 
 export interface IEvent {
   _id: string;
@@ -12,10 +14,10 @@ export interface IEvent {
   location: string;
   date: string; // ISO string
   time: string;
-  type: EventType;
   isMandatory: boolean;
   createdBy: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface EventState {
@@ -32,10 +34,10 @@ const initialState: EventState = {
 
 /* ================= THUNKS ================= */
 
-// Fetch all events (optional filter by type)
+// Fetch events with filter
 export const fetchEvents = createAsyncThunk(
   "events/fetchAll",
-  async (params: { type?: string } | undefined, thunkAPI) => {
+  async (params: { filter?: EventFilter } | undefined, thunkAPI) => {
     try {
       const { data } = await api.get(`/events/get`, {
         params,
@@ -66,15 +68,17 @@ export const fetchEventById = createAsyncThunk(
 // Create event (admin)
 export const createEvent = createAsyncThunk(
   "events/create",
-  async (formData: {
-    title: string;
-    description: string;
-    location: string;
-    date: string;
-    time: string;
-    type: EventType;
-    isMandatory: boolean;
-  }, thunkAPI) => {
+  async (
+    formData: {
+      title: string;
+      description: string;
+      location: string;
+      date: string;
+      time: string;
+      isMandatory: boolean;
+    },
+    thunkAPI
+  ) => {
     try {
       const { data } = await api.post("/events/create", formData, {
         withCredentials: true,

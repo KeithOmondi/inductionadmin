@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   MessageSquare,
   Users,
-  Settings,
   LogOut,
   Gavel,
   PinIcon,
@@ -91,6 +90,16 @@ const AdminSidebar: React.FC = () => {
               <LayoutDashboard size={18} />
               Dashboard
             </NavLink>
+            <NavLink
+              to="/admin/info"
+              onClick={() => setIsOpen(false)}
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? activeClass : inactiveClass}`
+              }
+            >
+              <PinIcon size={18} />
+              High Court Info
+            </NavLink>
 
             <NavLink
               to="/admin/messages"
@@ -103,16 +112,7 @@ const AdminSidebar: React.FC = () => {
               Messages
             </NavLink>
 
-            <NavLink
-              to="/admin/info"
-              onClick={() => setIsOpen(false)}
-              className={({ isActive }) =>
-                `${linkClass} ${isActive ? activeClass : inactiveClass}`
-              }
-            >
-              <PinIcon size={18} />
-              Court Information
-            </NavLink>
+            
 
             <NavLink
               to="/admin/list"
@@ -144,19 +144,6 @@ const AdminSidebar: React.FC = () => {
             >
               <Users size={18} />
               Events
-            </NavLink>
-
-            <div className="my-6 border-t border-slate-100" />
-
-            <NavLink
-              to="/admin/settings"
-              onClick={() => setIsOpen(false)}
-              className={({ isActive }) =>
-                `${linkClass} ${isActive ? activeClass : inactiveClass}`
-              }
-            >
-              <Settings size={18} />
-              System Settings
             </NavLink>
           </nav>
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   fetchEvents,
@@ -6,12 +6,13 @@ import {
   updateEvent,
   deleteEvent,
   type IEvent,
-  type EventType,
+  type EventFilter,
 } from "../../store/slices/eventSlice";
 import { 
   Plus, Trash2, Edit2, Calendar, MapPin, 
-  Clock, AlertCircle, X, Search
+  Clock, AlertCircle, X, Search, Filter
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 const AdminEventsPage = () => {
   const dispatch = useAppDispatch();
@@ -21,20 +22,22 @@ const AdminEventsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<IEvent | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState<EventFilter>("ALL");
+  
   const [form, setForm] = useState({
     title: "",
     description: "",
     location: "",
     date: "",
     time: "",
-    type: "DEADLINE" as EventType,
     isMandatory: false,
   });
 
   /* ---------------- EFFECTS ---------------- */
   useEffect(() => {
-    dispatch(fetchEvents({}));
-  }, [dispatch]);
+    // Fetch events based on active filter (ALL, UPCOMING, etc.)
+    dispatch(fetchEvents({ filter: activeFilter === "ALL" ? undefined : activeFilter }));
+  }, [dispatch, activeFilter]);
 
   /* ---------------- HANDLERS ---------------- */
   const handleChange = (
@@ -58,7 +61,6 @@ const AdminEventsPage = () => {
         location: event.location,
         date: event.date.split("T")[0],
         time: event.time,
-        type: event.type,
         isMandatory: event.isMandatory,
       });
     } else {
@@ -69,70 +71,90 @@ const AdminEventsPage = () => {
         location: "",
         date: "",
         time: "",
-        type: "DEADLINE",
         isMandatory: false,
       });
     }
     setShowModal(true);
   };
 
-  const handleSubmit = () => {
-    if (editingEvent) {
-      dispatch(updateEvent({ id: editingEvent._id, formData: form }));
-    } else {
-      dispatch(createEvent(form));
+  const handleSubmit = async () => {
+    if (!form.title || !form.date || !form.time) {
+      return toast.error("Please fill in all required fields.");
     }
-    setShowModal(false);
+
+    try {
+      if (editingEvent) {
+        await dispatch(updateEvent({ id: editingEvent._id, formData: form })).unwrap();
+        toast.success("Event updated successfully");
+      } else {
+        await dispatch(createEvent(form)).unwrap();
+        toast.success("Event published to registry");
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      toast.error(err || "Action failed");
+    }
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm("Are you sure you want to remove this event from the judicial registry?")) {
-      dispatch(deleteEvent(id));
+      dispatch(deleteEvent(id))
+        .unwrap()
+        .then(() => toast.success("Event deleted"))
+        .catch((err) => toast.error(err));
     }
   };
 
-  /* ---------------- UI HELPERS ---------------- */
-  const getTypeStyle = (type: string) => {
-    const styles: Record<string, string> = {
-      DEADLINE: "bg-red-50 text-red-700 border-red-100",
-      CEREMONY: "bg-amber-50 text-amber-700 border-amber-100",
-      INDUCTION: "bg-emerald-50 text-emerald-700 border-emerald-100",
-      OTHER: "bg-slate-50 text-slate-700 border-slate-100",
-    };
-    return styles[type] || styles.OTHER;
-  };
-
-  const filteredEvents = events.filter(e => 
-    e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  /* ---------------- SEARCH FILTER ---------------- */
+  const filteredEvents = useMemo(() => {
+    return events.filter(e => 
+      e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.location.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [events, searchTerm]);
 
   return (
-    <div className="max-w-7xl mx-auto p-6 lg:p-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-7xl mx-auto p-6 lg:p-10 space-y-8 animate-in fade-in duration-700">
       
       {/* 1. HEADER & SEARCH */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-slate-100 pb-10">
         <div className="space-y-1">
-          <h1 className="text-[#355E3B] font-serif text-4xl font-black tracking-tight">Judicial Calendar</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Official Registry Management</p>
+          <h1 className="text-[#355E3B] font-serif text-4xl font-black tracking-tight">Events Calendar</h1>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Events Management</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+          {/* Filter Dropdown */}
+          <div className="relative w-full sm:w-auto">
+            <select 
+              value={activeFilter}
+              onChange={(e) => setActiveFilter(e.target.value as EventFilter)}
+              className="appearance-none w-full bg-slate-100 border-none rounded-xl pl-10 pr-8 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-600 outline-none focus:ring-2 focus:ring-[#355E3B]/10 cursor-pointer"
+            >
+              <option value="ALL">All Events</option>
+              <option value="UPCOMING">Upcoming</option>
+              <option value="PAST">Archive</option>
+              <option value="RECENT">Recently Added</option>
+            </select>
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+          </div>
+
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text"
               placeholder="Search registry..."
-              className="w-full bg-slate-100/50 border-none rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-[#355E3B]/10 transition-all outline-none"
+              className="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-[#355E3B]/10 outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          
           <button
             onClick={() => openModal()}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#355E3B] text-white px-6 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-[#2a4b2f] transition-all shadow-xl shadow-[#355E3B]/20 active:scale-95"
           >
-            <Plus size={18} /> New Protocol
+            <Plus size={18} /> Add Event
           </button>
         </div>
       </div>
@@ -163,9 +185,6 @@ const AdminEventsPage = () => {
                 
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest ${getTypeStyle(event.type)}`}>
-                      {event.type}
-                    </span>
                     {event.isMandatory && (
                       <span className="flex items-center gap-1 text-[9px] font-black text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-100 uppercase tracking-widest">
                         <AlertCircle size={10} /> Mandatory
@@ -191,14 +210,12 @@ const AdminEventsPage = () => {
                 <button
                   onClick={() => openModal(event)}
                   className="p-3.5 bg-slate-50 text-slate-600 rounded-2xl hover:bg-[#C5A059]/10 hover:text-[#C5A059] transition-all"
-                  title="Edit Event"
                 >
                   <Edit2 size={18} />
                 </button>
                 <button
                   onClick={() => handleDelete(event._id)}
                   className="p-3.5 bg-slate-50 text-slate-600 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-all"
-                  title="Delete Event"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -246,32 +263,30 @@ const AdminEventsPage = () => {
 
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Scheduled Date</label>
-                <input type="date" name="date" value={form.date} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm" />
+                <input type="date" name="date" value={form.date} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none" />
               </div>
 
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Session Time</label>
-                <input type="time" name="time" value={form.time} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm" />
+                <input type="time" name="time" value={form.time} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none" />
               </div>
 
               <div>
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Venue Location</label>
-                <input type="text" name="location" value={form.location} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm" placeholder="Court Room / Hotel" />
+                <input type="text" name="location" value={form.location} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none" placeholder="Court Room / Hotel" />
               </div>
 
               <div className="flex items-center gap-4 pt-6">
-                <div className="flex-1">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Protocol Category</label>
-                  <select name="type" value={form.type} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-3 text-sm font-bold">
-                    <option value="DEADLINE">DEADLINE</option>
-                    <option value="CEREMONY">CEREMONY</option>
-                    <option value="INDUCTION">INDUCTION</option>
-                    <option value="OTHER">OTHER</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-3 mt-4 self-center">
-                  <input type="checkbox" name="isMandatory" id="mand" checked={form.isMandatory} onChange={handleChange} className="w-6 h-6 rounded-lg accent-[#355E3B]" />
-                  <label htmlFor="mand" className="text-[10px] font-black uppercase tracking-widest text-red-600 cursor-pointer">Mandatory</label>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    name="isMandatory" 
+                    id="mand" 
+                    checked={form.isMandatory} 
+                    onChange={handleChange} 
+                    className="w-6 h-6 rounded-lg accent-[#355E3B]" 
+                  />
+                  <label htmlFor="mand" className="text-[10px] font-black uppercase tracking-widest text-red-600 cursor-pointer">Mark as Mandatory proceeding</label>
                 </div>
               </div>
             </div>
@@ -285,7 +300,8 @@ const AdminEventsPage = () => {
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-10 py-4 bg-[#355E3B] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#2a4b2f] shadow-2xl shadow-[#355E3B]/40 transition-all"
+                disabled={loading}
+                className="px-10 py-4 bg-[#355E3B] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#2a4b2f] shadow-2xl shadow-[#355E3B]/40 transition-all disabled:opacity-50"
               >
                 {editingEvent ? "Update Record" : "Publish to Registry"}
               </button>

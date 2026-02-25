@@ -52,7 +52,7 @@ const JudgeHeader = () => {
       <div className="flex items-center gap-3 lg:gap-4">
         <div className="p-2 lg:p-3 bg-white rounded-xl shadow-sm border-l-4 border-[#355E3B] flex flex-col justify-center">
           <h1 className="text-[#355E3B] font-serif text-sm lg:text-base font-black leading-none uppercase tracking-tighter">
-            The Judiciary
+            onboarding portal
           </h1>
           <div className="flex items-center gap-1.5 mt-1">
             <div className="h-[1px] w-3 bg-[#C5A059]" />

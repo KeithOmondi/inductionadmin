@@ -62,9 +62,9 @@ const AdminNoticesPage = () => {
       {/* HEADER */}
       <div className="flex justify-between items-end border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-3xl font-serif font-bold text-[#355E3B]">Official Gazettes</h1>
+          <h1 className="text-3xl font-serif font-bold text-[#355E3B]">Notices</h1>
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
-            Institutional Announcements & Circulars
+            High Court Onboarding Notice board
           </p>
         </div>
 
@@ -73,7 +73,7 @@ const AdminNoticesPage = () => {
           className="flex items-center gap-2 bg-[#355E3B] text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#2a4a2e] transition-all shadow-lg shadow-[#355E3B]/20"
         >
           <Plus size={16} />
-          Issue New Notice
+          Add Notice
         </button>
       </div>
 

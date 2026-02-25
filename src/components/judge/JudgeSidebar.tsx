@@ -7,7 +7,6 @@ import {
   MessageSquare,
   BellRing,
   Calendar,
-  Settings,
   Menu,
   X,
   ShieldCheck,
@@ -95,7 +94,7 @@ const JudgeSidebar = () => {
         {/* Main Section */}
         <div className="mb-10">
           <p className="px-6 text-[10px] uppercase tracking-[0.2em] text-[#C5A059] mb-4 font-black">
-            Official Registry
+            User Navigation
           </p>
           <NavItem icon={LayoutDashboard} label="Dashboard" to="/judge/dashboard" onClick={() => setIsOpen(false)} />
           <NavItem icon={BookOpen} label="High Court Info" to="/judge/info" onClick={() => setIsOpen(false)} />
@@ -112,13 +111,7 @@ const JudgeSidebar = () => {
           <NavItem icon={Calendar} label="Events" to="/judge/events" onClick={() => setIsOpen(false)} />
         </div>
 
-        {/* Administration Section */}
-        <div className="mb-10">
-          <p className="px-6 text-[10px] uppercase tracking-[0.2em] text-[#C5A059] mb-4 font-black">
-            System Management
-          </p>
-          <NavItem icon={Settings} label="Settings" to="/judge/settings" onClick={() => setIsOpen(false)} />
-        </div>
+       
 
         {/* Institutional Footer */}
         <div className="mt-auto px-6 pt-6 border-t border-slate-100">
@@ -126,7 +119,7 @@ const JudgeSidebar = () => {
             <p className="text-[9px] text-[#355E3B] font-bold leading-tight flex items-center gap-2">
               <ShieldCheck size={12} className="text-[#C5A059]"/>
               SECURE ACCESS: <br />
-              JUDICIAL TERMINAL
+             REGISTRAR HIGH COURT
             </p>
           </div>
         </div>

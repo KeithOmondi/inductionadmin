@@ -186,11 +186,11 @@ const JudgeGuestsPage: React.FC = () => {
       <div className="flex justify-between items-end border-b border-slate-200 pb-6">
         <div>
           <h1 className="text-3xl font-serif font-bold text-[#355E3B]">
-            Ceremony Registry
+            Guest Registration
           </h1>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Protocol Status:
+              Status:
             </span>
             <span
               className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
