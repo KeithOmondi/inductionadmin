@@ -57,7 +57,7 @@ const AppContent = () => {
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-[#355E3B] border-t-transparent rounded-full animate-spin" />
           <p className="text-slate-500 font-serif italic animate-pulse">
-            Verifying registry credentials...
+            Office of the Registrar High Court...
           </p>
         </div>
       </div>
