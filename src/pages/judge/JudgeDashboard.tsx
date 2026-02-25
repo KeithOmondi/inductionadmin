@@ -79,7 +79,7 @@ const JudgeDashboardPage = () => {
             Welcome, <span className="capitalize">Hon. {displayName}</span>
           </h1>
           <p className="text-slate-500 text-sm tracking-wide font-medium">
-            High Court Judge Onboarding Portal — <span className="text-[#355E3B]">Judiciary of Kenya</span>
+            High Court Judge Onboarding Portal — <span className="text-[#355E3B]"></span>
           </p>
         </div>
 
