@@ -63,7 +63,7 @@ const JudgeHeader = () => {
         </div>
         <div className="border-l border-slate-200 pl-3 lg:pl-4 hidden xs:block">
           <h1 className="text-[#355E3B] font-serif text-base lg:text-xl font-bold leading-tight tracking-tight">
-            Kenya Judiciary
+            ORHC
           </h1>
           <p className="hidden md:block text-[#C5A059] text-[9px] font-black uppercase tracking-[0.25em] mt-0.5">
             Office of the Registrar • Registry
@@ -126,7 +126,7 @@ const JudgeHeader = () => {
             <div className="hidden sm:block text-left">
               <p className="text-[#355E3B] text-[11px] lg:text-sm font-bold leading-none">{user?.name || "Loading..."}</p>
               <p className="text-[#C5A059] text-[7px] lg:text-[8px] font-black uppercase tracking-widest mt-1 flex items-center gap-1">
-                <ShieldCheck size={9} strokeWidth={3} /> {user?.role || "Registry"}
+                <ShieldCheck size={9} strokeWidth={3} /> {user?.role || "ORHC"}
               </p>
             </div>
             <ChevronDown size={14} className={`text-slate-400 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />

@@ -10,6 +10,7 @@ import noticesReducer from "./slices/noticeSlice"
 import eventsReducer from "./slices/eventSlice"
 import userChatReducer from "./slices/userChatSlice"
 import pushReducer from "./slices/pushSlice"
+import swearingPreferenceReducer from "./slices/swearingPreferenceSlice"
 
 export const store = configureStore({
   reducer: {
@@ -22,7 +23,8 @@ export const store = configureStore({
     notices: noticesReducer,
     events: eventsReducer,
     userChat: userChatReducer,
-    push: pushReducer
+    push: pushReducer,
+    swearingPreference: swearingPreferenceReducer
     // add other slices here
   },
 });

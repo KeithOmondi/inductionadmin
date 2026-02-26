@@ -84,15 +84,7 @@ const JudgeEventsPage = () => {
               key={event._id}
               className="group relative flex flex-col md:flex-row bg-white border border-slate-200 rounded-[2rem] overflow-hidden hover:shadow-2xl hover:shadow-[#355E3B]/10 hover:border-[#355E3B]/30 transition-all duration-500"
             >
-              {/* Mandatory Badge */}
-              {event.isMandatory && (
-                <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-green-600 text-white px-3 py-1 rounded-full shadow-lg">
-                  <AlertTriangle size={10} strokeWidth={3} />
-                  <span className="text-[8px] font-black uppercase tracking-[0.1em]">
-                    ORHC
-                  </span>
-                </div>
-              )}
+              
 
               {/* Date Block */}
               <div className="w-full md:w-32 lg:w-40 flex flex-col items-center justify-center p-6 border-b md:border-b-0 md:border-r border-slate-100 bg-slate-50">

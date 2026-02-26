@@ -27,13 +27,19 @@ interface StatCardProps {
 
 const AdminGuestList: React.FC = () => {
   const dispatch = useAppDispatch();
+  
+  // FIX: Accessing 'state.guest' as per your Redux store configuration
   const { allGuestLists, loading } = useAppSelector((state) => state.guest);
+  const { user, isInitialized } = useAppSelector((state) => state.auth);
   
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   useEffect(() => {
-    dispatch(fetchAllGuestLists());
-  }, [dispatch]);
+    // Only fetch if auth is initialized and an admin/user session exists
+    if (isInitialized && user) {
+      dispatch(fetchAllGuestLists());
+    }
+  }, [dispatch, isInitialized, user]);
 
   const toggleRow = (id: string) => {
     setExpandedRowId(expandedRowId === id ? null : id);
@@ -44,17 +50,17 @@ const AdminGuestList: React.FC = () => {
   ===================================================== */
   const totalSubmissions = allGuestLists.length;
   const completedLists = allGuestLists.filter(list => list.status === "SUBMITTED").length;
-  const totalGuestsCount = allGuestLists.reduce((acc, list) => acc + list.guests.length, 0);
+  const totalGuestsCount = allGuestLists.reduce((acc, list) => acc + (list.guests?.length || 0), 0);
 
-  const getUserDisplay = (user: IJudgeGuest["user"]) => {
-    if (typeof user === "object" && user !== null) {
+  const getUserDisplay = (userData: IJudgeGuest["user"]) => {
+    if (typeof userData === "object" && userData !== null) {
       return { 
-        name: user.name || "Unknown Identity", 
-        email: user.email || "No Email Provided" 
+        name: userData.name || "Unknown Identity", 
+        email: userData.email || "No Email Provided" 
       };
     }
     return { 
-      name: `User ID: ...${String(user).slice(-6)}`, 
+      name: `User ID: ...${String(userData).slice(-6)}`, 
       email: "Fetch details manually" 
     };
   };
@@ -116,7 +122,7 @@ const AdminGuestList: React.FC = () => {
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex items-baseline gap-1">
-                          <span className="text-base font-bold text-slate-700">{list.guests.length}</span>
+                          <span className="text-base font-bold text-slate-700">{list.guests?.length || 0}</span>
                           <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">Guests</span>
                         </div>
                       </td>
@@ -132,7 +138,7 @@ const AdminGuestList: React.FC = () => {
                         )}
                       </td>
                       <td className="px-8 py-6 text-xs text-slate-500 font-semibold">
-                        {new Date(list.updatedAt).toLocaleDateString("en-KE")}
+                        {list.updatedAt ? new Date(list.updatedAt).toLocaleDateString("en-KE") : "N/A"}
                       </td>
                       <td className="px-8 py-6 text-right">
                         <button 
@@ -141,7 +147,7 @@ const AdminGuestList: React.FC = () => {
                             isExpanded ? 'bg-[#355E3B] text-white shadow-lg shadow-[#355E3B]/20' : 'bg-white border border-slate-200 text-[#355E3B] hover:bg-slate-50'
                           }`}
                         >
-                          {isExpanded ? 'Close' : 'Inspect'} {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          {isExpanded ? 'Close' : 'View'} {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
                       </td>
                     </tr>
@@ -168,27 +174,29 @@ const AdminGuestList: React.FC = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                   <DetailItem label="Gender" value={guest.gender || "Not Specified"} />
                                   <DetailItem 
-                                    label="Age Group" 
-                                    value={(guest.ageGroup || "N/A").replace("_", " ")} 
+                                    label="ID Status" 
+                                    value={guest.idNumber || guest.birthCertNumber ? "Verified" : "Missing Info"} 
                                   />
                                 </div>
 
-                                {guest.type === "ADULT" && (
-                                  <div className="space-y-2 pt-2 border-t border-slate-200">
-                                    <div className="flex items-center gap-2 text-xs text-slate-600">
-                                      <Hash size={14} className="text-slate-400" />
-                                      <span className="font-medium">{guest.idNumber || "No ID"}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs text-slate-600">
-                                      <Phone size={14} className="text-slate-400" />
-                                      <span className="font-medium">{guest.phone || "No Phone"}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-xs text-slate-600">
-                                      <Mail size={14} className="text-slate-400" />
-                                      <span className="truncate font-medium">{guest.email || "No Email"}</span>
-                                    </div>
+                                <div className="space-y-2 pt-2 border-t border-slate-200">
+                                  <div className="flex items-center gap-2 text-xs text-slate-600">
+                                    <Hash size={14} className="text-slate-400" />
+                                    <span className="font-medium">{guest.idNumber || guest.birthCertNumber || "No ID/Cert"}</span>
                                   </div>
-                                )}
+                                  {guest.type === "ADULT" && (
+                                    <>
+                                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                                        <Phone size={14} className="text-slate-400" />
+                                        <span className="font-medium">{guest.phone || "No Phone"}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                                        <Mail size={14} className="text-slate-400" />
+                                        <span className="truncate font-medium">{guest.email || "No Email"}</span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>

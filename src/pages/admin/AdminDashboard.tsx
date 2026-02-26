@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 // Icons
 import { 
   Users, FileCheck, Clock,
-  UserCheck, Download, Filter, MoreHorizontal 
+   Download, Filter, MoreHorizontal 
 } from 'lucide-react';
 
 // Thunks
@@ -42,8 +42,8 @@ const AdminDashboard = () => {
   const stats = [
     { label: "Total Judges", value: totalJudges, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Guest Lists", value: submittedGuestLists, icon: FileCheck, color: "text-[#355E3B]", bg: "bg-[#355E3B]/10" },
-    { label: "Documents", value: totalFiles, icon: Download, color: "text-[#C5A059]", bg: "bg-[#C5A059]/10" },
-    { label: "Messages", value: chatStats?.totalMessages || 0, icon: Clock, color: "text-purple-600", bg: "bg-purple-50" },
+    { label: "Uploaded Documents", value: totalFiles, icon: Download, color: "text-[#C5A059]", bg: "bg-[#C5A059]/10" },
+    { label: "Sent Messages", value: chatStats?.totalMessages || 0, icon: Clock, color: "text-purple-600", bg: "bg-purple-50" },
   ];
 
   // 4. Transform Guest Lists for the Table with typed parameter
@@ -94,7 +94,7 @@ const AdminDashboard = () => {
       {/* 3. Main Oversight Table */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <h3 className="text-[#355E3B] text-xs font-black uppercase tracking-widest">Recent Filings</h3>
+          <h3 className="text-[#355E3B] text-xs font-black uppercase tracking-widest">Recent Submissions</h3>
           <button className="text-slate-400 hover:text-[#355E3B]">
             <Filter size={16} />
           </button>
@@ -103,7 +103,7 @@ const AdminDashboard = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Judicial Officer</th>
+                <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Name</th>
                 <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Guests</th>
                 <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Status</th>
                 <th className="px-6 py-4 text-[9px] font-black uppercase tracking-widest text-slate-400">Time</th>
@@ -141,51 +141,11 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* 4. Activity Pulse */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-[#355E3B] rounded-2xl p-8 text-white relative overflow-hidden">
-          <div className="relative z-10">
-            <h4 className="text-[#C5A059] text-[10px] font-black uppercase tracking-[0.3em] mb-2">System Health</h4>
-            <h3 className="text-2xl font-serif font-bold mb-4">Registry Portal is Online</h3>
-            <div className="mt-6 flex gap-4">
-              <div className="bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm">
-                <p className="text-[8px] uppercase font-bold text-white/50 tracking-widest">Active Users</p>
-                <p className="text-lg font-bold">{users.filter((u: IUser) => u.isActive).length}</p>
-              </div>
-              <div className="bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm">
-                <p className="text-[8px] uppercase font-bold text-white/50 tracking-widest">Unverified</p>
-                <p className="text-lg font-bold">{users.filter((u: IUser) => !u.isVerified).length}</p>
-              </div>
-            </div>
-          </div>
-          <ShieldCheck className="absolute -right-10 -bottom-10 text-white/5" size={240} />
-        </div>
-        
-        <div className="bg-white border border-slate-200 rounded-2xl p-6">
-          <h4 className="text-[#355E3B] text-[10px] font-black uppercase tracking-widest mb-6">Staff Overview</h4>
-          <div className="space-y-6">
-            {users.filter((u: IUser) => u.role === 'admin').slice(0, 3).map((admin: IUser) => (
-              <div key={admin._id} className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[#C5A059]">
-                  <UserCheck size={18} />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-800">{admin.name}</p>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Administrator</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+     
     </div>
   );
 };
 
-const ShieldCheck = ({ className, size }: { className?: string, size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="m9 12 2 2 4-4" />
-  </svg>
-);
+
 
 export default AdminDashboard;

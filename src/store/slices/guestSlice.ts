@@ -2,6 +2,7 @@ import {
   createSlice,
   createAsyncThunk,
   type PayloadAction,
+  isAnyOf,
 } from "@reduxjs/toolkit";
 import { api } from "../../api/axios";
 
@@ -11,23 +12,14 @@ import { api } from "../../api/axios";
 
 export type GuestType = "ADULT" | "MINOR";
 export type Gender = "MALE" | "FEMALE" | "OTHER";
-export type AgeGroup =
-  | "UNDER_5"
-  | "6_12"
-  | "13_17"
-  | "18_25"
-  | "26_40"
-  | "41_60"
-  | "60_PLUS";
-
 export type GuestListStatus = "DRAFT" | "SUBMITTED";
 
 export interface IGuest {
   name?: string;
   type?: GuestType;
   gender?: Gender;
-  ageGroup?: AgeGroup;
-  idNumber?: string;
+  idNumber?: string;      // Required for Adults
+  birthCertNumber?: string; // Required for Minors
   phone?: string;
   email?: string;
 }
@@ -66,111 +58,79 @@ const initialState: GuestState = {
    THUNKS
 ===================================================== */
 
-// 🔹 Get My Guest List
+// Helper to handle standardized error messages
+const getErrorMessage = (err: any, fallback: string) => 
+  err.response?.data?.message || err.message || fallback;
+
 export const fetchMyGuestList = createAsyncThunk(
   "guests/fetchMyGuestList",
   async (_, { rejectWithValue }) => {
     try {
-      const { data } = await api.get("/guests/me", {
-        withCredentials: true,
-      });
-      return data as IJudgeGuest;
+      const { data } = await api.get("/guests/me");
+      // Standardizing: checking if your backend wraps in .data or returns direct object
+      return (data.data || data) as IJudgeGuest;
     } catch (err: any) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch guest list"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to fetch guest list"));
     }
   }
 );
 
-// 🔹 Save Draft (create or update)
 export const saveGuestList = createAsyncThunk(
   "guests/saveGuestList",
   async (guests: IGuest[], { rejectWithValue }) => {
     try {
-      const { data } = await api.post(
-        "/guests/save",
-        { guests },
-        { withCredentials: true }
-      );
-      return data as IJudgeGuest;
+      const { data } = await api.post("/guests/save", { guests });
+      return (data.data || data) as IJudgeGuest;
     } catch (err: any) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to save draft"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to save draft"));
     }
   }
 );
 
-// 🔹 Submit Guest List
 export const submitGuestList = createAsyncThunk(
   "guests/submitGuestList",
   async (guests: IGuest[], { rejectWithValue }) => {
     try {
-      const { data } = await api.post(
-        "/guests/submit",
-        { guests },
-        { withCredentials: true }
-      );
-      return data.data as IJudgeGuest; // backend returns { message, data }
+      const { data } = await api.post("/guests/submit", { guests });
+      return (data.data || data) as IJudgeGuest; 
     } catch (err: any) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to submit guest list"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to submit guest list"));
     }
   }
 );
 
-// 🔹 Add More Guests
 export const addGuests = createAsyncThunk(
   "guests/addGuests",
   async (guests: IGuest[], { rejectWithValue }) => {
     try {
-      const { data } = await api.patch(
-        "/guests/add",
-        { guests },
-        { withCredentials: true }
-      );
-      return data.data as IJudgeGuest;
+      const { data } = await api.patch("/guests/add", { guests });
+      return (data.data || data) as IJudgeGuest;
     } catch (err: any) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to add guests"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to add guests"));
     }
   }
 );
 
-// 🔹 Delete Guest List
 export const deleteGuestList = createAsyncThunk(
   "guests/deleteGuestList",
   async (_, { rejectWithValue }) => {
     try {
-      await api.delete("/guests/delete", {
-        withCredentials: true,
-      });
-      return true;
+      await api.delete("/guests/delete");
+      return null; 
     } catch (err: any) {
-      return rejectWithValue(
-        err.response?.data?.message || "Failed to delete guest list"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to delete guest list"));
     }
   }
 );
 
-// 🔹 Admin: Fetch All Guest Lists
 export const fetchAllGuestLists = createAsyncThunk(
   "guests/fetchAllGuestLists",
   async (_, { rejectWithValue }) => {
     try {
-      const { data } = await api.get("/guests/admin/all", {
-        withCredentials: true,
-      });
-      return data as IJudgeGuest[];
+      const { data } = await api.get("/guests/admin/all");
+      return (data.data || data) as IJudgeGuest[];
     } catch (err: any) {
-      return rejectWithValue(
-        err.response?.data?.message ||
-          "Failed to fetch all guest lists"
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to fetch all guest lists"));
     }
   }
 );
@@ -183,114 +143,52 @@ const guestSlice = createSlice({
   name: "guests",
   initialState,
   reducers: {
-    resetGuestState: (state) => {
-      state.guestList = null;
-      state.allGuestLists = [];
-      state.loading = false;
-      state.error = null;
-    },
+    resetGuestState: () => initialState, // Cleaner way to reset to defaults
   },
   extraReducers: (builder) => {
     builder
-
-      /* ================= FETCH MY ================= */
-      .addCase(fetchMyGuestList.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(
-        fetchMyGuestList.fulfilled,
-        (state, action: PayloadAction<IJudgeGuest>) => {
-          state.loading = false;
-          state.guestList = action.payload;
-        }
-      )
-      .addCase(fetchMyGuestList.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      /* ================= SAVE DRAFT ================= */
-      .addCase(saveGuestList.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(
-        saveGuestList.fulfilled,
-        (state, action: PayloadAction<IJudgeGuest>) => {
-          state.loading = false;
-          state.guestList = action.payload;
-        }
-      )
-      .addCase(saveGuestList.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      /* ================= SUBMIT ================= */
-      .addCase(submitGuestList.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(
-        submitGuestList.fulfilled,
-        (state, action: PayloadAction<IJudgeGuest>) => {
-          state.loading = false;
-          state.guestList = action.payload;
-        }
-      )
-      .addCase(submitGuestList.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      /* ================= ADD GUESTS ================= */
-      .addCase(addGuests.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(
-        addGuests.fulfilled,
-        (state, action: PayloadAction<IJudgeGuest>) => {
-          state.loading = false;
-          state.guestList = action.payload;
-        }
-      )
-      .addCase(addGuests.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-
-      /* ================= DELETE ================= */
-      .addCase(deleteGuestList.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      /* SUCCESS: Specific cases for individual logic */
       .addCase(deleteGuestList.fulfilled, (state) => {
         state.loading = false;
         state.guestList = null;
       })
-      .addCase(deleteGuestList.rejected, (state, action) => {
+      .addCase(fetchAllGuestLists.fulfilled, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.allGuestLists = action.payload;
       })
-
-      /* ================= ADMIN FETCH ================= */
-      .addCase(fetchAllGuestLists.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(
-        fetchAllGuestLists.fulfilled,
-        (state, action: PayloadAction<IJudgeGuest[]>) => {
+      
+      /* SUCCESS: Matcher for any thunk that updates the primary guestList */
+      .addMatcher(
+        isAnyOf(
+          fetchMyGuestList.fulfilled, 
+          saveGuestList.fulfilled, 
+          submitGuestList.fulfilled, 
+          addGuests.fulfilled
+        ),
+        (state, action: PayloadAction<IJudgeGuest>) => {
           state.loading = false;
-          state.allGuestLists = action.payload;
+          state.guestList = action.payload;
+          state.error = null;
         }
       )
-      .addCase(fetchAllGuestLists.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      });
+
+      /* GLOBAL PENDING MATCHERS */
+      .addMatcher(
+        (action) => action.type.endsWith("/pending") && action.type.startsWith("guests/"),
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        }
+      )
+
+      /* GLOBAL REJECTED MATCHERS */
+      .addMatcher(
+        (action) => action.type.endsWith("/rejected") && action.type.startsWith("guests/"),
+        (state, action: PayloadAction<string>) => {
+          state.loading = false;
+          state.error = action.payload || "An unexpected error occurred";
+        }
+      );
   },
 });
 

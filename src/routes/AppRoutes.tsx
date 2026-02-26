@@ -20,6 +20,8 @@ import AdminGuestList from "../pages/admin/AdminGuestList";
 import AdminNoticesPage from "../pages/admin/AdminNoticesPage";
 import AdminEventsPage from "../pages/admin/AdminEventsPage";
 import JudgeMessagePage from "../pages/judge/JudgeMessage";
+import JudgesReligion from "../pages/judge/JudgesReligion";
+import AdminOath from "../pages/admin/AdminOath";
 
 export default function AppRoutes() {
   return (
@@ -42,6 +44,7 @@ export default function AppRoutes() {
         <Route path="list" element={<AdminGuestList />} />
         <Route path="notice" element={<AdminNoticesPage />} />
         <Route path="event" element={<AdminEventsPage />} />
+        <Route path="oath" element={<AdminOath />} />
         {/* Default redirect for /admin */}
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
@@ -62,6 +65,7 @@ export default function AppRoutes() {
         <Route path="messages" element={<JudgeMessagePage />} />
         <Route path="notices" element={<JudgeNoticesPages />} />
         <Route path="events" element={<JudgeEventsPage />} />
+        <Route path="oath" element={<JudgesReligion />} />
 
         {/* Default redirect for /judge */}
         <Route index element={<Navigate to="dashboard" replace />} />

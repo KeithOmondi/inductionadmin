@@ -8,59 +8,58 @@ import {
   Loader2,
   CheckCircle,
   ShieldAlert,
-  Info,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   fetchMyGuestList,
   saveGuestList,
   submitGuestList,
-  addGuests,
   type IGuest,
   type GuestType,
   type Gender,
-  type AgeGroup,
 } from "../../store/slices/guestSlice";
 
 /* =====================================================
     TYPES & HELPERS
 ===================================================== */
-
 interface IGuestWithId extends IGuest {
-  id: number;
+  uiId: string;
 }
 
-const emptyGuest = (): IGuestWithId => ({
-  id: Date.now() + Math.random(),
+const createEmptyGuest = (): IGuestWithId => ({
+  uiId: crypto.randomUUID(),
   name: "",
   type: "ADULT",
   gender: "MALE",
-  ageGroup: "26_40",
   idNumber: "",
+  birthCertNumber: "",
   phone: "",
   email: "",
 });
 
 const JudgeGuestsPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { guestList, loading, error } = useAppSelector((state) => state.guest);
-  const [guests, setGuests] = useState<IGuestWithId[]>([emptyGuest()]);
+  const { guestList, loading } = useAppSelector((state) => state.guest);
+  const { user, isInitialized } = useAppSelector((state) => state.auth);
 
-  /* =====================================================
-      LIFECYCLE
-  ===================================================== */
-
-  useEffect(() => {
-    dispatch(fetchMyGuestList());
-  }, [dispatch]);
+  const [guests, setGuests] = useState<IGuestWithId[]>([createEmptyGuest()]);
+  const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
 
   useEffect(() => {
-    if (guestList?.guests?.length) {
+    if (isInitialized && user) {
+      dispatch(fetchMyGuestList());
+    }
+  }, [dispatch, isInitialized, user]);
+
+  useEffect(() => {
+    if (guestList?.guests && guestList.guests.length > 0) {
       setGuests(
-        guestList.guests.map((g, idx) => ({
+        guestList.guests.map((g: IGuest) => ({
           ...g,
-          id: Date.now() + idx,
-        }))
+          uiId: crypto.randomUUID(),
+        })),
       );
     }
   }, [guestList]);
@@ -68,71 +67,54 @@ const JudgeGuestsPage: React.FC = () => {
   /* =====================================================
       HANDLERS
   ===================================================== */
-
-  const addGuestHandler = () => {
+  const addGuestHandler = (): void => {
     if (guests.length < 5) {
-      setGuests([...guests, emptyGuest()]);
-      toast.success("New guest row added to protocol.");
+      setGuests([...guests, createEmptyGuest()]);
+      toast.success("New guest row added.");
     } else {
       toast.error("Maximum allocation (5) reached.");
     }
   };
 
-  const removeGuest = (id: number) => {
+  const removeGuest = (uiId: string): void => {
     if (guests.length > 1) {
-      setGuests(guests.filter((g) => g.id !== id));
+      setGuests(guests.filter((g) => g.uiId !== uiId));
       toast.success("Guest row removed.");
     }
   };
 
   const updateField = <K extends keyof IGuestWithId>(
-    id: number,
+    uiId: string,
     field: K,
-    value: IGuestWithId[K]
-  ) => {
+    value: IGuestWithId[K],
+  ): void => {
     setGuests((prev) =>
-      prev.map((g) => (g.id === id ? { ...g, [field]: value } : g))
+      prev.map((g) => (g.uiId === uiId ? { ...g, [field]: value } : g)),
     );
   };
 
   const cleanGuestsForApi = (): IGuest[] =>
-    guests.map(({ id, ...rest }) => rest);
+    guests.map(({ uiId, ...rest }) => rest);
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (): Promise<void> => {
     try {
       await dispatch(saveGuestList(cleanGuestsForApi())).unwrap();
-      toast.success("Draft saved to secure registry.");
-    } catch (err: any) {
-      toast.error(err || "Failed to save draft.");
+      toast.success("Changes saved to registry.");
+    } catch (err: unknown) {
+      toast.error(typeof err === "string" ? err : "Failed to save.");
     }
   };
 
-  const handleSubmit = async () => {
+  const handleFinalSubmit = async (): Promise<void> => {
+    setShowConfirmModal(false);
     try {
       await dispatch(submitGuestList(cleanGuestsForApi())).unwrap();
-      toast.success("Protocol finalized & submitted.", {
+      toast.success("Registry updated successfully.", {
         icon: "⚖️",
         duration: 5000,
       });
-    } catch (err: any) {
-      toast.error(err || "Submission rejected.");
-    }
-  };
-
-  const handleAddMoreAfterSubmit = async () => {
-    if (!guestList) return;
-    const existingCount = guestList.guests.length;
-    const newGuests = cleanGuestsForApi().slice(existingCount);
-
-    if (newGuests.length > 0) {
-      try {
-        await dispatch(addGuests(newGuests)).unwrap();
-        toast.success("Additional guests verified.");
-      } catch (err: any) {
-        toast.error(err || "Update failed.");
-      }
-    } else {
-      toast("No new guests detected to add.", { icon: "ℹ️" });
+    } catch (err: unknown) {
+      toast.error(typeof err === "string" ? err : "Update failed.");
     }
   };
 
@@ -143,7 +125,7 @@ const JudgeGuestsPage: React.FC = () => {
       <div className="flex h-96 flex-col items-center justify-center space-y-4">
         <Loader2 className="animate-spin text-[#355E3B]" size={40} />
         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-          Syncing Ledger...
+          Syncing Portal...
         </p>
       </div>
     );
@@ -151,106 +133,122 @@ const JudgeGuestsPage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 p-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          className: "text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-xl",
-          duration: 3000,
-        }}
-      />
+      <Toaster position="top-right" />
 
-      {/* --- EXECUTIVE SECURITY NOTICE --- */}
-      <div className="bg-[#355E3B]/5 border border-[#355E3B]/10 rounded-[2rem] p-8 flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left transition-all hover:bg-[#355E3B]/10">
+      {/* --- CONFIRMATION MODAL --- */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl border border-slate-100 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-2 bg-[#C5A059]" />
+            <button
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute top-6 right-6 text-slate-300 hover:text-slate-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex flex-col items-center text-center space-y-6">
+              <div className="bg-amber-50 p-4 rounded-full text-amber-600">
+                <AlertCircle size={48} />
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-[#355E3B] font-serif text-2xl font-bold">
+                  Confirm Registration
+                </h3>
+                <p className="text-slate-500 text-sm leading-relaxed font-medium px-2">
+                  Kindly confirm whether these will be the only guests accompanying you to the swearing-in ceremony.{" "}
+                  <span className="text-[#355E3B] font-bold underline decoration-[#C5A059]">
+                    {guests.length} guest(s)
+                  </span>
+                  ? You can still modify this later if required.
+                </p>
+              </div>
+              <div className="flex flex-col w-full gap-3 pt-4">
+                <button
+                  onClick={handleFinalSubmit}
+                  className="w-full py-4 bg-[#355E3B] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#2a4a2e] shadow-lg shadow-[#355E3B]/20 transition-all"
+                >
+                  Yes, Confirm & Update
+                </button>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="w-full py-4 bg-white text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all"
+                >
+                  Go Back
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- SECURITY NOTICE --- */}
+      <div className="bg-[#355E3B]/5 border border-[#355E3B]/10 rounded-[2rem] p-8 flex flex-col md:flex-row gap-6 items-center md:items-start">
         <div className="bg-[#355E3B] p-4 rounded-2xl text-white shadow-xl shadow-[#355E3B]/20 shrink-0">
           <ShieldAlert size={28} />
         </div>
         <div className="space-y-2">
           <h2 className="text-[#355E3B] text-[11px] font-black uppercase tracking-[0.25em]">
-            Security Clearance Protocol
+            Kind Reminder
           </h2>
-          <p className="text-slate-600 text-sm leading-relaxed max-w-2xl">
-            Please provide the following details in respect of the{" "}
-            <span className="font-bold text-slate-900 underline decoration-[#C5A059] decoration-2 underline-offset-4">5 guests</span> accompanying 
-            the Judge to the swearing-in ceremony.
+          <p className="text-slate-600 text-sm leading-relaxed">
+            You are allowed to register up to{" "}
+            <span className="font-bold text-slate-900">5 guests</span>. You can
+            update your list at any time.
+            <br />
+            Kindly endure the details provided match that of the Identification
+            Documents
           </p>
-          <div className="flex items-center justify-center md:justify-start gap-2 text-[#C5A059]">
-            <Info size={14} />
-            <p className="text-[10px] font-bold uppercase tracking-wider">
-              Ensure information matches identification documents exactly.
-            </p>
-          </div>
         </div>
       </div>
 
-      {/* Header */}
+      {/* --- HEADER --- */}
       <div className="flex justify-between items-end border-b border-slate-200 pb-6">
         <div>
           <h1 className="text-3xl font-serif font-bold text-[#355E3B]">
             Guest Registration
           </h1>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Status:
-            </span>
             <span
-              className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
-                isSubmitted
-                  ? "bg-green-100 text-green-700"
-                  : "bg-amber-100 text-amber-700"
-              }`}
+              className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${isSubmitted ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
             >
               {guestList?.status || "DRAFT"}
             </span>
           </div>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-bold text-slate-700 tracking-tighter">
-            {guests.length} <span className="text-slate-300">/</span> 5 GUESTS
-          </p>
-        </div>
+        <p className="text-sm font-bold text-slate-700 tracking-tighter">
+          {guests.length} / 5 GUESTS
+        </p>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl text-xs font-bold uppercase tracking-wide">
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* Guest Cards */}
+      {/* --- GUEST FORMS (STAY EDITABLE) --- */}
       <div className="space-y-6">
         {guests.map((guest, index) => (
           <div
-            key={guest.id}
-            className={`bg-white border rounded-2xl p-6 transition-all duration-300 ${
-              isSubmitted && index < (guestList?.guests.length || 0)
-                ? "border-slate-100 opacity-70 grayscale-[0.5]"
-                : "border-slate-200 shadow-sm shadow-[#355E3B]/5 hover:shadow-md"
-            }`}
+            key={guest.uiId}
+            className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all"
           >
             <div className="flex justify-between items-center mb-6">
               <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#355E3B] text-white text-[10px] font-black">
                 {index + 1}
               </span>
-              {!isSubmitted && (
-                <button
-                  onClick={() => removeGuest(guest.id)}
-                  className="text-slate-300 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 size={18} />
-                </button>
-              )}
+              <button
+                onClick={() => removeGuest(guest.uiId)}
+                className="text-slate-300 hover:text-red-500 transition-colors"
+              >
+                <Trash2 size={18} />
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
-                label="Full Name (as per ID)"
+                label="Full Name"
                 value={guest.name}
-                onChange={(v) => updateField(guest.id, "name", v)}
+                onChange={(v: string) => updateField(guest.uiId, "name", v)}
               />
-
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Guest Classification
+                  Classification
                 </label>
                 <div className="flex gap-2">
                   {(["ADULT", "MINOR"] as GuestType[]).map((t) => (
@@ -258,123 +256,109 @@ const JudgeGuestsPage: React.FC = () => {
                       key={t}
                       active={guest.type === t}
                       label={t}
-                      onClick={() => updateField(guest.id, "type", t)}
+                      onClick={() => updateField(guest.uiId, "type", t)}
                     />
                   ))}
                 </div>
               </div>
-
               <Select
                 label="Gender"
                 value={guest.gender}
                 options={["MALE", "FEMALE", "OTHER"]}
-                onChange={(v) => updateField(guest.id, "gender", v as Gender)}
-              />
-
-              <Select
-                label="Age Group"
-                value={guest.ageGroup}
-                options={[
-                  "UNDER_5",
-                  "6_12",
-                  "13_17",
-                  "18_25",
-                  "26_40",
-                  "41_60",
-                  "60_PLUS",
-                ]}
-                onChange={(v) =>
-                  updateField(guest.id, "ageGroup", v as AgeGroup)
+                onChange={(v: string) =>
+                  updateField(guest.uiId, "gender", v as Gender)
                 }
               />
-
-              {guest.type === "ADULT" && (
+              {guest.type === "ADULT" ? (
                 <>
                   <Input
-                    label="National ID / Passport Number"
+                    label="National ID / Passport"
                     value={guest.idNumber}
-                    onChange={(v) => updateField(guest.id, "idNumber", v)}
+                    onChange={(v: string) =>
+                      updateField(guest.uiId, "idNumber", v)
+                    }
                   />
                   <Input
-                    label="Primary Phone Number"
+                    label="Phone Number"
                     value={guest.phone}
-                    onChange={(v) => updateField(guest.id, "phone", v)}
+                    onChange={(v: string) =>
+                      updateField(guest.uiId, "phone", v)
+                    }
                   />
                   <Input
                     label="Email Address"
                     value={guest.email}
-                    onChange={(v) => updateField(guest.id, "email", v)}
+                    onChange={(v: string) =>
+                      updateField(guest.uiId, "email", v)
+                    }
                   />
                 </>
+              ) : (
+                <Input
+                  label="Birth Certificate Number"
+                  value={guest.birthCertNumber}
+                  onChange={(v: string) =>
+                    updateField(guest.uiId, "birthCertNumber", v)
+                  }
+                />
               )}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Actions */}
+      {/* --- FOOTER ACTIONS (ALWAYS ACTIVE) --- */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t border-slate-100">
         <button
           onClick={addGuestHandler}
-          disabled={guests.length >= 5 || loading}
-          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#355E3B] disabled:opacity-30 transition-opacity hover:underline underline-offset-8"
+          disabled={guests.length >= 5}
+          className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#355E3B] disabled:opacity-30 hover:underline underline-offset-8 transition-all"
         >
-          <UserPlus size={16} /> Add Guest Row
+          <UserPlus size={16} /> Add Another Guest
         </button>
 
         <div className="flex gap-4">
-          {!isSubmitted ? (
-            <>
-              <button
-                onClick={handleSaveDraft}
-                disabled={loading}
-                className="px-6 py-3 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" size={14} />
-                ) : (
-                  <Save size={14} />
-                )}{" "}
-                Save Draft
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="px-8 py-3 bg-[#355E3B] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#2a4a2e] shadow-lg shadow-[#355E3B]/20 transition-all flex items-center gap-2"
-              >
-                Finalize & Submit <ArrowRight size={14} />
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-4">
-              {guests.length > (guestList?.guests.length || 0) && (
-                <button
-                  onClick={handleAddMoreAfterSubmit}
-                  disabled={loading}
-                  className="px-8 py-3 bg-[#C5A059] text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-[#C5A059]/20 transition-all"
-                >
-                  Update Guest Additions
-                </button>
-              )}
-              <div className="flex items-center gap-2 text-green-600 text-[10px] font-black uppercase tracking-widest bg-green-50 px-4 py-2 rounded-full border border-green-100">
-                <CheckCircle size={16} /> Locked & Submitted
-              </div>
-            </div>
-          )}
+          <button
+            onClick={handleSaveDraft}
+            disabled={loading}
+            className="px-6 py-3 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 flex items-center gap-2 transition-all"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" size={14} />
+            ) : (
+              <Save size={14} />
+            )}
+            Save Progress
+          </button>
+          <button
+            onClick={() => setShowConfirmModal(true)}
+            disabled={loading}
+            className="px-8 py-3 bg-[#355E3B] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#2a4a2e] shadow-lg shadow-[#355E3B]/20 flex items-center gap-2 transition-all"
+          >
+            {isSubmitted ? "Update Registration" : "Finalize Registry"}{" "}
+            <ArrowRight size={14} />
+          </button>
         </div>
       </div>
+
+      {isSubmitted && (
+        <div className="flex items-center justify-center gap-2 text-green-600 text-[10px] font-black uppercase tracking-widest">
+          <CheckCircle size={14} /> Registry currently active in system
+        </div>
+      )}
     </div>
   );
 };
 
-/* --- Reusable Components (Typed) --- */
+/* --- Reusable Components (Explicitly Typed) --- */
 
 interface InputProps {
   label: string;
   value?: string;
   onChange: (v: string) => void;
 }
-const Input = ({ label, value, onChange }: InputProps) => (
+
+const Input: React.FC<InputProps> = ({ label, value, onChange }) => (
   <div className="space-y-1">
     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
       {label}
@@ -382,9 +366,11 @@ const Input = ({ label, value, onChange }: InputProps) => (
     <input
       type="text"
       value={value || ""}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:outline-none focus:border-[#355E3B] focus:ring-1 focus:ring-[#355E3B]/20 transition-all placeholder:text-slate-300"
-      placeholder="Type here..."
+      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+        onChange(e.target.value)
+      }
+      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:border-[#355E3B] outline-none transition-all"
+      placeholder="Required..."
     />
   </div>
 );
@@ -395,22 +381,25 @@ interface SelectProps {
   options: string[];
   onChange: (v: string) => void;
 }
-const Select = ({ label, value, options, onChange }: SelectProps) => (
+
+const Select: React.FC<SelectProps> = ({ label, value, options, onChange }) => (
   <div className="space-y-1">
     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
       {label}
     </label>
     <select
       value={value || ""}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:outline-none focus:border-[#355E3B] transition-all appearance-none"
+      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+        onChange(e.target.value)
+      }
+      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:border-[#355E3B] appearance-none"
     >
       <option value="" disabled>
         Select...
       </option>
       {options.map((opt) => (
         <option key={opt} value={opt}>
-          {opt.replace("_", " ")}
+          {opt}
         </option>
       ))}
     </select>
@@ -422,13 +411,14 @@ interface ToggleProps {
   label: string;
   onClick: () => void;
 }
-const Toggle = ({ active, label, onClick }: ToggleProps) => (
+
+const Toggle: React.FC<ToggleProps> = ({ active, label, onClick }) => (
   <button
     type="button"
     onClick={onClick}
     className={`flex-1 px-4 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all ${
       active
-        ? "bg-[#355E3B] border-[#355E3B] text-white shadow-lg shadow-[#355E3B]/20"
+        ? "bg-[#355E3B] border-[#355E3B] text-white shadow-md"
         : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"
     }`}
   >

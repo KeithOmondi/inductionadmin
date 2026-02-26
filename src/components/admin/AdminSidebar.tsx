@@ -102,6 +102,17 @@ const AdminSidebar: React.FC = () => {
             </NavLink>
 
             <NavLink
+              to="/admin/oath"
+              onClick={() => setIsOpen(false)}
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? activeClass : inactiveClass}`
+              }
+            >
+              <PinIcon size={18} />
+              Oath Details
+            </NavLink>
+
+            <NavLink
               to="/admin/messages"
               onClick={() => setIsOpen(false)}
               className={({ isActive }) =>

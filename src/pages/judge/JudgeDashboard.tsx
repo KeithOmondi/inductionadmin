@@ -10,7 +10,6 @@ import {
   Calendar,
   MapPin,
   Clock,
-  ArrowRight,
   Loader2,
 } from "lucide-react";
 
@@ -113,15 +112,31 @@ const JudgeDashboardPage = () => {
         {/* HEADER */}
         <div className="space-y-1 border-b border-slate-200 pb-6">
           <h1 className="text-4xl font-serif text-[#355E3B]">
-            Welcome, <span className="capitalize">Hon. {displayName}</span>
+            Welcome, <span className="capitalize">Judge {displayName}</span>
           </h1>
           <p className="text-slate-500 text-sm tracking-wide font-medium">
-            High Court Judge Onboarding Portal
+            High Court Onboarding Portal
           </p>
         </div>
 
         {/* STATS ROW */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+
+          <StatCard
+            title="Notices"
+            value={notices.length}
+            subtext={`${notices.filter((n) => n.isUrgent).length} urgent`}
+            loading={noticesLoading}
+          />
+
+          <StatCard
+            title="Messages"
+            value={totalMessages}
+            subtext={`${unreadCount} unread`}
+            loading={chatLoading}
+          />
+
           <StatCard
             title="Guests Registered"
             value={guestCount}
@@ -134,24 +149,12 @@ const JudgeDashboardPage = () => {
           />
 
           <StatCard
-            title="Notices"
-            value={notices.length}
-            subtext={`${notices.filter((n) => n.isUrgent).length} urgent`}
-            loading={noticesLoading}
-          />
-
-          <StatCard
-            title="Days to Ceremony"
+            title="Days to the next activity"
             value={countdownDisplay}
             subtext="14 March 2026"
           />
 
-          <StatCard
-            title="Messages"
-            value={totalMessages}
-            subtext={`${unreadCount} unread`}
-            loading={chatLoading}
-          />
+          
         </div>
 
         {/* CONTENT GRID */}
@@ -210,15 +213,7 @@ const JudgeDashboardPage = () => {
               </p>
             )}
 
-            <button className="bg-[#355E3B] text-white px-6 py-3 text-sm hover:bg-[#2a4b2f] transition-all flex items-center gap-2 group font-bold rounded-sm shadow-md">
-              {guestList?.status === "SUBMITTED"
-                ? "View Guest List"
-                : "Register Guests"}
-              <ArrowRight
-                size={16}
-                className="group-hover:translate-x-1 transition-transform"
-              />
-            </button>
+            
           </div>
 
           {/* NOTICES BOX */}

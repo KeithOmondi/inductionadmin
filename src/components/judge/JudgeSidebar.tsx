@@ -87,7 +87,7 @@ const JudgeSidebar = () => {
         
         {/* Mobile Header inside the Drawer */}
         <div className="lg:hidden px-6 mb-8 flex justify-between items-center">
-           <p className="text-[10px] uppercase tracking-[0.2em] text-[#C5A059] font-black">Registry Menu</p>
+           <p className="text-[10px] uppercase tracking-[0.2em] text-[#C5A059] font-black">ORHC Menu</p>
            <button onClick={toggleSidebar} className="text-slate-400"><X size={20}/></button>
         </div>
 
@@ -98,6 +98,7 @@ const JudgeSidebar = () => {
           </p>
           <NavItem icon={LayoutDashboard} label="Dashboard" to="/judge/dashboard" onClick={() => setIsOpen(false)} />
           <NavItem icon={BookOpen} label="High Court Info" to="/judge/info" onClick={() => setIsOpen(false)} />
+          <NavItem icon={Users} label="Oath Details" to="/judge/oath" onClick={() => setIsOpen(false)} />
           <NavItem icon={Users} label="Guest Registration" to="/judge/guests" onClick={() => setIsOpen(false)} />
         </div>
 
