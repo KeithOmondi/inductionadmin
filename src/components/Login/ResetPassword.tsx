@@ -102,7 +102,7 @@ const ResetPassword: React.FC = () => {
 
           <div className="mb-8">
             <h2 className="text-lg font-bold text-slate-800 tracking-tight text-center">
-              Password Reset is Requireed
+              Password Reset is Required
             </h2>
             <p className="text-xs text-slate-500 mt-1 text-center">
               For security compliance, update your credentials before accessing your account.
