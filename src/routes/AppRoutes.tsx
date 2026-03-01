@@ -22,12 +22,14 @@ import AdminEventsPage from "../pages/admin/AdminEventsPage";
 import JudgeMessagePage from "../pages/judge/JudgeMessage";
 import JudgesReligion from "../pages/judge/JudgesReligion";
 import AdminOath from "../pages/admin/AdminOath";
+import ResetPassword from "../components/Login/ResetPassword";
 
 export default function AppRoutes() {
   return (
     <Routes>
       {/* 1. PUBLIC ROUTES */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* 2. ADMIN ROUTES */}
       <Route

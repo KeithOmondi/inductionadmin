@@ -1,5 +1,10 @@
-// src/store/slices/adminAuthSlice.ts
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+// src/store/slices/authSlice.ts
+import { 
+  createSlice, 
+  createAsyncThunk, 
+  type PayloadAction, 
+  type ActionReducerMapBuilder 
+} from "@reduxjs/toolkit";
 import { api } from "../../api/axios";
 
 /* ===========================
@@ -16,7 +21,8 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   error: string | null;
-  isInitialized: boolean; // Tracks if first refresh attempt has run
+  isInitialized: boolean;
+  needsPasswordReset: boolean;
 }
 
 const initialState: AuthState = {
@@ -24,92 +30,69 @@ const initialState: AuthState = {
   loading: false,
   error: null,
   isInitialized: false,
+  needsPasswordReset: false,
 };
 
 /* ===========================
    ASYNC THUNKS
 =========================== */
 
-// Standard Login
 export const loginUser = createAsyncThunk<
   User,
   { email: string; password: string },
-  { rejectValue: string }
->(
-  "auth/loginUser",
-  async ({ email, password }, { rejectWithValue }) => {
-    console.log("[THUNK LOGIN] Attempting login for:", email); // ✅ clg
-    try {
-      const res = await api.post("/auth/login", { email, password });
-      console.log("[THUNK LOGIN] Login successful:", res.data.user); // ✅ clg
-      return res.data.user;
-    } catch (err: any) {
-      console.log("[THUNK LOGIN] Login failed:", err.response?.data?.message); // ✅ clg
-      return rejectWithValue(err.response?.data?.message || "Invalid credentials.");
-    }
+  { rejectValue: { message: string; needsReset?: boolean; resetToken?: string } }
+>("auth/loginUser", async ({ email, password }, { rejectWithValue }) => {
+  try {
+    const res = await api.post("/auth/login", { email, password });
+    return res.data.user;
+  } catch (err: any) {
+    const message = err.response?.data?.message || "Invalid credentials.";
+    const needsReset = err.response?.data?.needsPasswordReset || false;
+    const resetToken = err.response?.data?.resetToken;
+    return rejectWithValue({ message, needsReset, resetToken });
   }
-);
+});
 
-// Temporary Login (One-time link)
-export const tempLoginUser = createAsyncThunk<
+export const forceResetPassword = createAsyncThunk<
   User,
-  { email: string; token: string; newPassword: string },
+  { newPassword: string; resetToken: string },
   { rejectValue: string }
 >(
-  "auth/tempLoginUser",
-  async (payload, { rejectWithValue }) => {
-    console.log("[THUNK TEMP LOGIN] Attempting temp login for:", payload.email); // ✅ clg
-    try {
-      const res = await api.post("/auth/temp-login", payload);
-      console.log("[THUNK TEMP LOGIN] Temp login successful:", res.data.user); // ✅ clg
-      return res.data.user;
-    } catch (err: any) {
-      console.log("[THUNK TEMP LOGIN] Temp login failed:", err.response?.data?.message); // ✅ clg
-      return rejectWithValue(err.response?.data?.message || "Temporary login failed.");
-    }
-  }
-);
-
-// Session Refresh (causing 401s)
-export const refreshUser = createAsyncThunk<
-  User,
-  void,
-  { rejectValue: string }
->(
-  "auth/refreshUser",
-  async (_, { rejectWithValue }) => {
-    console.log("[THUNK REFRESH] Attempting session refresh");
-
+  "auth/forceReset",
+  async ({ newPassword, resetToken }, { rejectWithValue }) => {
     try {
       const res = await api.post(
-        "/auth/refresh",
-        {},
-        { withCredentials: true } // ✅ CRITICAL FIX
+        "/auth/force-reset",
+        { newPassword },
+        {
+          headers: { Authorization: `Bearer ${resetToken}` },
+        }
       );
-
-      console.log("[THUNK REFRESH] Refresh successful:", res.data.user);
       return res.data.user;
     } catch (err: any) {
-      console.log(
-        "[THUNK REFRESH] Refresh failed:",
-        err.response?.status,
-        err.response?.data
-      );
+      return rejectWithValue(err.response?.data?.message || "Reset failed");
+    }
+  }
+);
+
+export const refreshUser = createAsyncThunk<User, void, { rejectValue: string }>(
+  "auth/refreshUser",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.post("/auth/refresh", {}, { withCredentials: true });
+      return res.data.user;
+    } catch (err: any) {
       return rejectWithValue("NO_SESSION");
     }
   }
 );
 
-// Logout
 export const logoutUser = createAsyncThunk<void, void, { rejectValue: string }>(
   "auth/logoutUser",
   async (_, { rejectWithValue }) => {
-    console.log("[THUNK LOGOUT] Logging out"); // ✅ clg
     try {
       await api.post("/auth/logout");
-      console.log("[THUNK LOGOUT] Logout successful"); // ✅ clg
     } catch (err: any) {
-      console.log("[THUNK LOGOUT] Logout failed:", err); // ✅ clg
       return rejectWithValue("Logout failed.");
     }
   }
@@ -123,60 +106,74 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     clearError: (state) => {
-      console.log("[SLICE] clearError called"); // ✅ clg
       state.error = null;
     },
     clearUser: (state) => {
-      console.log("[SLICE] clearUser called"); // ✅ clg
       state.user = null;
+      state.needsPasswordReset = false;
+    },
+    resetAuthFlags: (state) => {
+      state.error = null;
+      state.needsPasswordReset = false;
     },
   },
-  extraReducers: (builder) => {
+  extraReducers: (builder: ActionReducerMapBuilder<AuthState>) => {
     builder
-      /* LOGIN */
+      /* -------- LOGIN -------- */
       .addCase(loginUser.pending, (state) => {
-        console.log("[SLICE LOGIN] Pending"); // ✅ clg
         state.loading = true;
         state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
-        console.log("[SLICE LOGIN] Fulfilled:", action.payload); // ✅ clg
         state.loading = false;
         state.user = action.payload;
+        state.needsPasswordReset = false;
       })
       .addCase(loginUser.rejected, (state, action) => {
-        console.log("[SLICE LOGIN] Rejected:", action.payload); // ✅ clg
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.payload?.message || "Login failed";
+        state.needsPasswordReset = action.payload?.needsReset || false;
       })
 
-      /* REFRESH */
+      /* -------- FORCE RESET -------- */
+      .addCase(forceResetPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(forceResetPassword.fulfilled, (state, action: PayloadAction<User>) => {
+        state.loading = false;
+        state.user = action.payload;
+        state.needsPasswordReset = false;
+        state.error = null;
+      })
+      .addCase(forceResetPassword.rejected, (state, action: PayloadAction<string | undefined>) => {
+        state.loading = false;
+        state.error = action.payload || "Password reset failed";
+      })
+
+      /* -------- REFRESH -------- */
       .addCase(refreshUser.pending, (state) => {
-        console.log("[SLICE REFRESH] Pending"); // ✅ clg
         state.loading = true;
       })
       .addCase(refreshUser.fulfilled, (state, action) => {
-        console.log("[SLICE REFRESH] Fulfilled:", action.payload); // ✅ clg
         state.loading = false;
         state.user = action.payload;
         state.isInitialized = true;
       })
       .addCase(refreshUser.rejected, (state) => {
-        console.log("[SLICE REFRESH] Rejected"); // ✅ clg
         state.loading = false;
         state.user = null;
         state.isInitialized = true;
-        state.error = null; // silent fail
       })
 
-      /* LOGOUT */
+      /* -------- LOGOUT -------- */
       .addCase(logoutUser.fulfilled, (state) => {
-        console.log("[SLICE LOGOUT] Fulfilled"); // ✅ clg
         state.user = null;
         state.loading = false;
+        state.needsPasswordReset = false;
       });
   },
 });
 
-export const { clearError, clearUser } = authSlice.actions;
+export const { clearError, clearUser, resetAuthFlags } = authSlice.actions;
 export default authSlice.reducer;
