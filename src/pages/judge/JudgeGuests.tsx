@@ -196,7 +196,7 @@ const JudgeGuestsPage: React.FC = () => {
             <span className="font-bold text-slate-900">5 guests</span>. You can
             update your list at any time.
             <br />
-            Kindly endure the details provided match that of the Identification
+            Kindly ensure the details provided match that on the Identification
             Documents
           </p>
         </div>
