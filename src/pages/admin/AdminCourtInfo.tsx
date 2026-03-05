@@ -96,7 +96,8 @@ const AdminCourtInfo = () => {
     )
       return;
 
-    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const targetIndex =
+      direction === "up" ? currentIndex - 1 : currentIndex + 1;
     const targetDivision = divisions[targetIndex];
 
     // Pass the swapWith ID as a plain object (our Thunk handles both FormData and objects)
@@ -169,7 +170,9 @@ const AdminCourtInfo = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 ml-1">OFFICIAL NAME</label>
+                    <label className="text-[10px] font-bold text-slate-400 ml-1">
+                      OFFICIAL NAME
+                    </label>
                     <input
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#355E3B] transition-all"
                       placeholder="e.g. Hon. Eliud Njai"
@@ -178,7 +181,9 @@ const AdminCourtInfo = () => {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 ml-1">OFFICIAL TITLE</label>
+                    <label className="text-[10px] font-bold text-slate-400 ml-1">
+                      OFFICIAL TITLE
+                    </label>
                     <input
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#355E3B] transition-all"
                       placeholder="e.g. Registrar High Court"
@@ -189,7 +194,9 @@ const AdminCourtInfo = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 ml-1">MESSAGE / SHORT BIOGRAPHY</label>
+                  <label className="text-[10px] font-bold text-slate-400 ml-1">
+                    MESSAGE / SHORT BIOGRAPHY
+                  </label>
                   <textarea
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#355E3B] min-h-[100px] transition-all"
                     placeholder="Enter the official message here..."
@@ -202,17 +209,26 @@ const AdminCourtInfo = () => {
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 cursor-pointer bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all">
                       <Upload size={14} className="text-[#C5A059]" />
-                      {divFile ? <span className="text-[#355E3B]">{divFile.name}</span> : "Attach Portrait Photo"}
+                      {divFile ? (
+                        <span className="text-[#355E3B]">{divFile.name}</span>
+                      ) : (
+                        "Attach Portrait Photo"
+                      )}
                       <input
                         type="file"
                         hidden
                         ref={fileInputRef}
-                        onChange={(e) => setDivFile(e.target.files?.[0] || null)}
+                        onChange={(e) =>
+                          setDivFile(e.target.files?.[0] || null)
+                        }
                         accept="image/*"
                       />
                     </label>
                     {divFile && (
-                      <button onClick={() => setDivFile(null)} className="text-red-500 hover:bg-red-50 p-1 rounded-full">
+                      <button
+                        onClick={() => setDivFile(null)}
+                        className="text-red-500 hover:bg-red-50 p-1 rounded-full"
+                      >
                         <X size={16} />
                       </button>
                     )}
@@ -268,14 +284,20 @@ const AdminCourtInfo = () => {
                         <div className="flex gap-4">
                           {d.content?.find((c) => c.type === "IMAGE") && (
                             <img
-                              src={d.content.find((c) => c.type === "IMAGE")?.url}
+                              src={
+                                d.content.find((c) => c.type === "IMAGE")?.url
+                              }
                               className="w-12 h-12 rounded-full object-cover border border-[#C5A059]/30"
                               alt="portrait"
                             />
                           )}
                           <div>
-                            <h3 className="text-lg font-serif font-bold text-[#355E3B]">{d.name}</h3>
-                            <p className="text-[10px] font-black text-[#C5A059] uppercase tracking-widest">{d.title}</p>
+                            <h3 className="text-lg font-serif font-bold text-[#355E3B]">
+                              {d.name}
+                            </h3>
+                            <p className="text-[10px] font-black text-[#C5A059] uppercase tracking-widest">
+                              {d.title}
+                            </p>
                           </div>
                         </div>
                       )}
@@ -309,7 +331,8 @@ const AdminCourtInfo = () => {
                         </button>
                         <button
                           onClick={() => {
-                            if (window.confirm("Delete this official?")) dispatch(deleteDivision(d._id));
+                            if (window.confirm("Delete this official?"))
+                              dispatch(deleteDivision(d._id));
                           }}
                           className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                         >
@@ -345,7 +368,9 @@ const AdminCourtInfo = () => {
             <div className="bg-[#355E3B]/5 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <BookOpen size={18} className="text-[#355E3B]" />
-                <h2 className="font-bold text-xs uppercase tracking-widest text-[#355E3B]">Registry FAQs</h2>
+                <h2 className="font-bold text-xs uppercase tracking-widest text-[#355E3B]">
+                  Registry FAQs
+                </h2>
               </div>
               <button
                 onClick={() => {
@@ -366,13 +391,17 @@ const AdminCourtInfo = () => {
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-[#355E3B]"
                     placeholder="Question"
                     value={faqForm.question}
-                    onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
+                    onChange={(e) =>
+                      setFaqForm({ ...faqForm, question: e.target.value })
+                    }
                   />
                   <textarea
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm min-h-[80px] outline-none focus:border-[#355E3B]"
                     placeholder="Answer"
                     value={faqForm.answer}
-                    onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
+                    onChange={(e) =>
+                      setFaqForm({ ...faqForm, answer: e.target.value })
+                    }
                   />
                   <div className="flex justify-end gap-2 pt-2">
                     <button
@@ -401,14 +430,19 @@ const AdminCourtInfo = () => {
                 >
                   <div className="flex justify-between gap-4">
                     <div className="flex-1">
-                      <h4 className="text-sm font-bold text-slate-800">{f.question}</h4>
+                      <h4 className="text-sm font-bold text-slate-800">
+                        {f.question}
+                      </h4>
                       <p className="text-xs text-slate-500 mt-1">{f.answer}</p>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => {
                           setEditFaqId(f._id);
-                          setFaqForm({ question: f.question, answer: f.answer });
+                          setFaqForm({
+                            question: f.question,
+                            answer: f.answer,
+                          });
                         }}
                         className="p-1 text-blue-500 hover:bg-blue-50 rounded"
                       >
@@ -416,7 +450,8 @@ const AdminCourtInfo = () => {
                       </button>
                       <button
                         onClick={() => {
-                          if (window.confirm("Delete FAQ?")) dispatch(deleteFaq(f._id));
+                          if (window.confirm("Delete FAQ?"))
+                            dispatch(deleteFaq(f._id));
                         }}
                         className="p-1 text-red-500 hover:bg-red-50 rounded"
                       >
@@ -436,7 +471,9 @@ const AdminCourtInfo = () => {
             <div className="bg-slate-900 px-6 py-4 flex justify-between items-center">
               <div className="flex items-center gap-2 text-[#C5A059]">
                 <ContactIcon size={18} />
-                <h2 className="font-bold text-xs uppercase tracking-widest">Registry Contact</h2>
+                <h2 className="font-bold text-xs uppercase tracking-widest">
+                  Registry Contact
+                </h2>
               </div>
               <button
                 onClick={() => {
@@ -457,13 +494,17 @@ const AdminCourtInfo = () => {
                     className="w-full text-xs font-black bg-white border border-slate-200 p-2 rounded-lg outline-none uppercase focus:border-[#C5A059]"
                     placeholder="Label (e.g. EMAIL)"
                     value={contactForm.title}
-                    onChange={(e) => setContactForm({ ...contactForm, title: e.target.value })}
+                    onChange={(e) =>
+                      setContactForm({ ...contactForm, title: e.target.value })
+                    }
                   />
                   <input
                     className="w-full text-sm font-bold bg-white border border-slate-200 p-2 rounded-lg outline-none focus:border-[#C5A059]"
                     placeholder="Details"
                     value={contactForm.detail}
-                    onChange={(e) => setContactForm({ ...contactForm, detail: e.target.value })}
+                    onChange={(e) =>
+                      setContactForm({ ...contactForm, detail: e.target.value })
+                    }
                   />
                   <button
                     onClick={handleContactSubmit}
@@ -484,17 +525,28 @@ const AdminCourtInfo = () => {
               )}
 
               {contacts.map((c) => (
-                <div key={c._id} className="group relative pl-4 border-l-2 border-[#C5A059] py-1">
+                <div
+                  key={c._id}
+                  className="group relative pl-4 border-l-2 border-[#C5A059] py-1"
+                >
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-[9px] font-black text-[#C5A059] uppercase">{c.title}</p>
-                      <p className="text-sm font-bold text-slate-800 break-all">{c.detail}</p>
+                      <p className="text-[9px] font-black text-[#C5A059] uppercase">
+                        {c.title}
+                      </p>
+                      <p className="text-sm font-bold text-slate-800 break-all">
+                        {c.detail}
+                      </p>
                     </div>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => {
                           setEditContactId(c._id);
-                          setContactForm({ title: c.title, detail: c.detail, sub: c.sub || "" });
+                          setContactForm({
+                            title: c.title,
+                            detail: c.detail,
+                            sub: c.sub || "",
+                          });
                         }}
                         className="text-blue-400 hover:text-blue-600"
                       >
@@ -502,7 +554,8 @@ const AdminCourtInfo = () => {
                       </button>
                       <button
                         onClick={() => {
-                          if (window.confirm("Delete contact?")) dispatch(deleteContact(c._id));
+                          if (window.confirm("Delete contact?"))
+                            dispatch(deleteContact(c._id));
                         }}
                         className="text-red-400 hover:text-red-600"
                       >

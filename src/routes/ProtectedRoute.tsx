@@ -10,11 +10,11 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, loading } = useSelector((state: RootState) => state.auth);
+  const { user, loading, isInitialized } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
 
-  // 1. Handle Initial Loading State
-  if (loading) {
+  // Wait until auth check completes
+  if (!isInitialized || loading) {
     return (
       <div className="min-h-screen bg-[#060b13] flex flex-col items-center justify-center gap-4">
         <Loader2 className="animate-spin text-[#c5a059]" size={40} />
@@ -25,27 +25,28 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     );
   }
 
-  // 2. Not logged in
+  // Not logged in
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 3. Role-Based Access Check
-  // Checks if the user's role exists within the allowedRoles array
-  const hasAccess = allowedRoles.includes(user.role);
-
-  if (!hasAccess) {
-    console.error(`SECURE ACCESS DENIED: Role '${user.role}' is unauthorized.`);
+  // Role check
+  if (!allowedRoles.includes(user.role)) {
     return (
       <div className="min-h-screen bg-[#060b13] flex flex-col items-center justify-center p-6 text-center">
         <div className="p-4 bg-red-900/20 rounded-full mb-4 border border-red-500/30">
           <ShieldAlert className="text-red-500" size={32} />
         </div>
-        <h1 className="text-xl font-serif text-white uppercase tracking-tight">Access Denied</h1>
+
+        <h1 className="text-xl font-serif text-white uppercase tracking-tight">
+          Access Denied
+        </h1>
+
         <p className="text-sm text-gray-400 mt-2 max-w-xs">
           Your account role ({user.role}) does not have clearance for this section.
         </p>
-        <button 
+
+        <button
           onClick={() => window.history.back()}
           className="mt-6 text-[#c5a059] text-sm font-bold uppercase hover:underline"
         >
@@ -55,6 +56,5 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     );
   }
 
-  // Authorized
   return <>{children}</>;
 }

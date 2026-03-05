@@ -2,63 +2,92 @@ import { useEffect, useState, useRef } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { Toaster } from "react-hot-toast";
+
 import AppRoutes from "./routes/AppRoutes";
 import { store, type AppDispatch, type RootState } from "./store/store";
 import { refreshUser } from "./store/slices/adminAuthSlice";
-import { initSocket } from "./services/socket";
+import { disconnectSocket, initSocket } from "./services/socket";
+
+/* =====================================================
+   APP CONTENT
+===================================================== */
 
 const AppContent = () => {
   const dispatch = useDispatch<AppDispatch>();
+
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // 🔑 prevents multiple socket initializations
   const socketInitialized = useRef(false);
 
   const user = useSelector((state: RootState) => state.auth.user);
 
-  /* ================= AUTH REFRESH ================= */
+  /* =====================================================
+     AUTH SESSION RESTORE
+  ===================================================== */
+
   useEffect(() => {
-    const initAuth = async () => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
       try {
-        console.log("[APP] Attempting session refresh...");
+        console.log("[APP] Checking existing session...");
+
         await dispatch(refreshUser()).unwrap();
-        console.log("[APP] Session restored");
-      } catch {
-        console.log("[APP] No active session restored.");
+
+        console.log("[APP] Session restored successfully");
+      } catch (error) {
+        console.log("[APP] No active session found.");
       } finally {
-        setIsInitializing(false);
+        if (mounted) setIsInitializing(false);
       }
     };
 
-    initAuth();
+    initializeAuth();
+
+    return () => {
+      mounted = false;
+    };
   }, [dispatch]);
 
-  /* ================= SOCKET INIT ================= */
+  /* =====================================================
+     SOCKET MANAGEMENT
+  ===================================================== */
+
   useEffect(() => {
     if (!user?._id) {
-      console.log("[SOCKET] No user yet, skipping socket init");
+      console.log("[SOCKET] No user logged in");
+
+      disconnectSocket();
+
+      socketInitialized.current = false;
+
       return;
     }
 
-    if (socketInitialized.current) {
-      console.log("[SOCKET] Already initialized, skipping...");
-      return;
-    }
+    if (socketInitialized.current) return;
 
-    console.log("[SOCKET] Initializing socket for user:", user._id);
+    console.log("[SOCKET] Connecting for user:", user._id);
+
     initSocket(user._id);
+
     socketInitialized.current = true;
   }, [user]);
 
-  /* ================= LOADING SCREEN ================= */
+  /* =====================================================
+     LOADING SCREEN
+  ===================================================== */
+
   if (isInitializing) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
+
           <div className="w-12 h-12 border-4 border-[#355E3B] border-t-transparent rounded-full animate-spin" />
+
           <p className="text-slate-500 font-serif italic animate-pulse">
             Office of the Registrar High Court...
           </p>
+
         </div>
       </div>
     );
@@ -67,12 +96,17 @@ const AppContent = () => {
   return <AppRoutes />;
 };
 
-/* ================= ROOT APP ================= */
+/* =====================================================
+   ROOT APP
+===================================================== */
+
 const App = () => {
   return (
     <Provider store={store}>
       <BrowserRouter>
+
         <AppContent />
+
         <Toaster
           position="top-right"
           toastOptions={{
@@ -84,6 +118,7 @@ const App = () => {
             },
           }}
         />
+
       </BrowserRouter>
     </Provider>
   );
