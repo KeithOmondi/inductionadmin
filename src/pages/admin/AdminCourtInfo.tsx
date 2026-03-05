@@ -21,22 +21,26 @@ import {
   Upload,
   X,
   Check,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 
 const AdminCourtInfo = () => {
   const dispatch = useAppDispatch();
-  const { divisions, faqs, contacts, loading } = useAppSelector((state) => state.court);
+  const { divisions, faqs, contacts, loading } = useAppSelector(
+    (state) => state.court,
+  );
 
   // --- LOCAL STATE: DIVISIONS ---
   const [newDivName, setNewDivName] = useState("");
-  const [newDivTitle, setNewDivTitle] = useState(""); 
+  const [newDivTitle, setNewDivTitle] = useState("");
   const [newDivBody, setNewDivBody] = useState("");
   const [divFile, setDivFile] = useState<File | null>(null);
-  
+
   const [editDivId, setEditDivId] = useState<string | null>(null);
   const [editDivName, setEditDivName] = useState("");
-  const [editDivTitle, setEditDivTitle] = useState(""); 
+  const [editDivTitle, setEditDivTitle] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- LOCAL STATE: FAQs ---
@@ -46,7 +50,11 @@ const AdminCourtInfo = () => {
 
   // --- LOCAL STATE: CONTACTS ---
   const [isAddingContact, setIsAddingContact] = useState(false);
-  const [contactForm, setContactForm] = useState({ title: "", detail: "", sub: "" });
+  const [contactForm, setContactForm] = useState({
+    title: "",
+    detail: "",
+    sub: "",
+  });
   const [editContactId, setEditContactId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,16 +64,15 @@ const AdminCourtInfo = () => {
   // --- HANDLERS: DIVISIONS ---
   const handleAddDiv = () => {
     if (!newDivName.trim() || !newDivTitle.trim()) return;
-    
+
     const formData = new FormData();
-    formData.append("name", newDivName); 
-    formData.append("title", newDivTitle); 
-    formData.append("body", newDivBody); 
+    formData.append("name", newDivName);
+    formData.append("title", newDivTitle);
+    formData.append("body", newDivBody);
     if (divFile) formData.append("file", divFile);
 
     dispatch(createDivision(formData));
-    
-    // Reset Form
+
     setNewDivName("");
     setNewDivTitle("");
     setNewDivBody("");
@@ -79,6 +86,26 @@ const AdminCourtInfo = () => {
     formData.append("title", editDivTitle);
     dispatch(updateDivision({ id, formData }));
     setEditDivId(null);
+  };
+
+  const handleMoveDivision = (id: string, direction: "up" | "down") => {
+    const currentIndex = divisions.findIndex((d) => d._id === id);
+    if (
+      (direction === "up" && currentIndex === 0) ||
+      (direction === "down" && currentIndex === divisions.length - 1)
+    )
+      return;
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const targetDivision = divisions[targetIndex];
+
+    // Pass the swapWith ID as a plain object (our Thunk handles both FormData and objects)
+    dispatch(
+      updateDivision({
+        id,
+        formData: { swapWith: targetDivision._id },
+      }),
+    );
   };
 
   // --- HANDLERS: FAQs & CONTACTS ---
@@ -108,80 +135,92 @@ const AdminCourtInfo = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-8 space-y-10 animate-in fade-in duration-700">
-      {/* Header */}
       <header className="border-b border-slate-200 pb-6 flex justify-between items-end">
         <div>
-          <h1 className="text-[#355E3B] font-serif text-3xl font-bold italic">High Court Information</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium font-serif">Registry Management System</p>
+          <h1 className="text-[#355E3B] font-serif text-3xl font-bold italic">
+            High Court Information
+          </h1>
+          <p className="text-slate-500 text-sm mt-1 font-medium font-serif">
+            Registry Management System
+          </p>
         </div>
-        {loading && <span className="text-[10px] font-black text-[#C5A059] animate-pulse">SYNCING DATA...</span>}
+        {loading && (
+          <span className="text-[10px] font-black text-[#C5A059] animate-pulse">
+            SYNCING DATA...
+          </span>
+        )}
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* LEFT COLUMN: DIVISIONS & FAQS */}
         <div className="lg:col-span-8 space-y-8">
-          
           <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="bg-[#355E3B]/5 px-6 py-4 border-b border-slate-100 flex items-center gap-2">
               <Gavel size={18} className="text-[#355E3B]" />
-              <h2 className="font-bold text-xs uppercase tracking-widest text-[#355E3B]">Court Leadership & Divisions</h2>
+              <h2 className="font-bold text-xs uppercase tracking-widest text-[#355E3B]">
+                Court Leadership & Divisions
+              </h2>
             </div>
-            
+
             <div className="p-6">
-              {/* Creator Section */}
               <div className="space-y-4 mb-10 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Create New Official Entry</h3>
-                
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                  Create New Official Entry
+                </h3>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 ml-1">OFFICIAL NAME</label>
-                    <input 
+                    <input
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#355E3B] transition-all"
                       placeholder="e.g. Hon. Eliud Njai"
                       value={newDivName}
-                      onChange={e => setNewDivName(e.target.value)}
+                      onChange={(e) => setNewDivName(e.target.value)}
                     />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 ml-1">OFFICIAL TITLE</label>
-                    <input 
+                    <input
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-[#355E3B] transition-all"
                       placeholder="e.g. Registrar High Court"
                       value={newDivTitle}
-                      onChange={e => setNewDivTitle(e.target.value)}
+                      onChange={(e) => setNewDivTitle(e.target.value)}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 ml-1">MESSAGE / SHORT BIOGRAPHY</label>
-                  <textarea 
+                  <textarea
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#355E3B] min-h-[100px] transition-all"
                     placeholder="Enter the official message here..."
                     value={newDivBody}
-                    onChange={e => setNewDivBody(e.target.value)}
+                    onChange={(e) => setNewDivBody(e.target.value)}
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 cursor-pointer bg-white border border-slate-200 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all">
                       <Upload size={14} className="text-[#C5A059]" />
                       {divFile ? <span className="text-[#355E3B]">{divFile.name}</span> : "Attach Portrait Photo"}
-                      <input 
-                        type="file" 
-                        hidden 
+                      <input
+                        type="file"
+                        hidden
                         ref={fileInputRef}
                         onChange={(e) => setDivFile(e.target.files?.[0] || null)}
                         accept="image/*"
                       />
                     </label>
-                    {divFile && <button onClick={() => setDivFile(null)} className="text-red-500 hover:bg-red-50 p-1 rounded-full"><X size={16}/></button>}
+                    {divFile && (
+                      <button onClick={() => setDivFile(null)} className="text-red-500 hover:bg-red-50 p-1 rounded-full">
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
 
-                  <button 
-                    onClick={handleAddDiv} 
-                    disabled={loading || !newDivName || !newDivTitle} 
+                  <button
+                    onClick={handleAddDiv}
+                    disabled={loading || !newDivName || !newDivTitle}
                     className="bg-[#355E3B] text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#2a4b2f] disabled:opacity-50 shadow-lg shadow-[#355E3B]/20 transition-all"
                   >
                     {loading ? "Publishing..." : "Publish Entry"}
@@ -189,33 +228,35 @@ const AdminCourtInfo = () => {
                 </div>
               </div>
 
-              {/* Feed Display */}
               <div className="space-y-6">
-                {divisions.map(d => (
-                  <div key={d._id} className="p-6 border border-slate-100 rounded-2xl hover:border-slate-200 transition-all group relative bg-white">
+                {divisions.map((d, index) => (
+                  <div
+                    key={d._id}
+                    className="p-6 border border-slate-100 rounded-2xl hover:border-slate-200 transition-all group relative bg-white"
+                  >
                     <div className="flex justify-between items-start mb-4">
                       {editDivId === d._id ? (
                         <div className="flex-1 space-y-3 p-2 bg-slate-50 rounded-xl border border-[#355E3B]/20">
-                          <input 
+                          <input
                             className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-sm font-bold outline-none focus:border-[#355E3B]"
                             value={editDivName}
-                            onChange={e => setEditDivName(e.target.value)}
+                            onChange={(e) => setEditDivName(e.target.value)}
                             placeholder="Name"
                           />
-                          <input 
+                          <input
                             className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-xs font-bold text-[#C5A059] outline-none focus:border-[#355E3B]"
                             value={editDivTitle}
-                            onChange={e => setEditDivTitle(e.target.value)}
+                            onChange={(e) => setEditDivTitle(e.target.value)}
                             placeholder="Title"
                           />
                           <div className="flex gap-2">
-                            <button 
+                            <button
                               onClick={() => handleUpdateDiv(d._id)}
                               className="flex items-center gap-1 text-[9px] font-black bg-[#355E3B] text-white px-3 py-1.5 rounded-full"
                             >
                               <Check size={10} /> SAVE
                             </button>
-                            <button 
+                            <button
                               onClick={() => setEditDivId(null)}
                               className="text-[9px] font-black bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full"
                             >
@@ -225,12 +266,11 @@ const AdminCourtInfo = () => {
                         </div>
                       ) : (
                         <div className="flex gap-4">
-                          {/* Portrait preview in list */}
-                          {d.content?.find(c => c.type === "IMAGE") && (
-                            <img 
-                              src={d.content.find(c => c.type === "IMAGE")?.url} 
-                              className="w-12 h-12 rounded-full object-cover border border-[#C5A059]/30" 
-                              alt="portrait" 
+                          {d.content?.find((c) => c.type === "IMAGE") && (
+                            <img
+                              src={d.content.find((c) => c.type === "IMAGE")?.url}
+                              className="w-12 h-12 rounded-full object-cover border border-[#C5A059]/30"
+                              alt="portrait"
                             />
                           )}
                           <div>
@@ -239,10 +279,42 @@ const AdminCourtInfo = () => {
                           </div>
                         </div>
                       )}
-                      
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                        <button onClick={() => { setEditDivId(d._id); setEditDivName(d.name); setEditDivTitle(d.title || ""); }} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"><Pencil size={14}/></button>
-                        <button onClick={() => { if(window.confirm("Delete this official?")) dispatch(deleteDivision(d._id)) }} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"><Trash size={14}/></button>
+
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all items-center">
+                        <div className="flex flex-col mr-2 bg-slate-100 rounded-lg p-1">
+                          <button
+                            onClick={() => handleMoveDivision(d._id, "up")}
+                            disabled={index === 0 || loading}
+                            className="text-slate-400 hover:text-[#355E3B] disabled:opacity-20 transition-colors"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleMoveDivision(d._id, "down")}
+                            disabled={index === divisions.length - 1 || loading}
+                            className="text-slate-400 hover:text-[#355E3B] disabled:opacity-20 transition-colors"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditDivId(d._id);
+                            setEditDivName(d.name);
+                            setEditDivTitle(d.title || "");
+                          }}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm("Delete this official?")) dispatch(deleteDivision(d._id));
+                          }}
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                          <Trash size={14} />
+                        </button>
                       </div>
                     </div>
 
@@ -268,53 +340,88 @@ const AdminCourtInfo = () => {
             </div>
           </section>
 
-          {/* FAQS SECTION (Kept stable) */}
+          {/* Registry FAQs Section */}
           <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             <div className="bg-[#355E3B]/5 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <BookOpen size={18} className="text-[#355E3B]" />
                 <h2 className="font-bold text-xs uppercase tracking-widest text-[#355E3B]">Registry FAQs</h2>
               </div>
-              <button 
-                onClick={() => { setIsAddingFaq(true); setEditFaqId(null); setFaqForm({question: "", answer: ""}); }} 
+              <button
+                onClick={() => {
+                  setIsAddingFaq(true);
+                  setEditFaqId(null);
+                  setFaqForm({ question: "", answer: "" });
+                }}
                 className="text-[10px] font-black text-[#C5A059] border border-[#C5A059] px-3 py-1 rounded-full hover:bg-[#C5A059] hover:text-white transition-all"
               >
                 + ADD FAQ
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               {(isAddingFaq || editFaqId) && (
                 <div className="bg-slate-50 p-5 rounded-2xl border-2 border-[#C5A059]/20 space-y-3 animate-in slide-in-from-top-2">
-                  <input 
+                  <input
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-[#355E3B]"
                     placeholder="Question"
                     value={faqForm.question}
-                    onChange={e => setFaqForm({...faqForm, question: e.target.value})}
+                    onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
                   />
-                  <textarea 
+                  <textarea
                     className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm min-h-[80px] outline-none focus:border-[#355E3B]"
                     placeholder="Answer"
                     value={faqForm.answer}
-                    onChange={e => setFaqForm({...faqForm, answer: e.target.value})}
+                    onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
                   />
                   <div className="flex justify-end gap-2 pt-2">
-                    <button onClick={() => { setIsAddingFaq(false); setEditFaqId(null); }} className="text-xs font-bold text-slate-400 hover:text-slate-600">Cancel</button>
-                    <button onClick={handleFaqSubmit} className="bg-[#355E3B] text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase">Save FAQ</button>
+                    <button
+                      onClick={() => {
+                        setIsAddingFaq(false);
+                        setEditFaqId(null);
+                      }}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleFaqSubmit}
+                      className="bg-[#355E3B] text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase"
+                    >
+                      Save FAQ
+                    </button>
                   </div>
                 </div>
               )}
 
-              {faqs.map(f => (
-                <div key={f._id} className="group border-b border-slate-50 py-4 last:border-0 hover:bg-slate-50/50 px-2 rounded-lg transition-colors">
+              {faqs.map((f) => (
+                <div
+                  key={f._id}
+                  className="group border-b border-slate-50 py-4 last:border-0 hover:bg-slate-50/50 px-2 rounded-lg transition-colors"
+                >
                   <div className="flex justify-between gap-4">
                     <div className="flex-1">
                       <h4 className="text-sm font-bold text-slate-800">{f.question}</h4>
                       <p className="text-xs text-slate-500 mt-1">{f.answer}</p>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setEditFaqId(f._id); setFaqForm({question: f.question, answer: f.answer}); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><Pencil size={14}/></button>
-                      <button onClick={() => { if(window.confirm("Delete FAQ?")) dispatch(deleteFaq(f._id)) }} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash size={14}/></button>
+                      <button
+                        onClick={() => {
+                          setEditFaqId(f._id);
+                          setFaqForm({ question: f.question, answer: f.answer });
+                        }}
+                        className="p-1 text-blue-500 hover:bg-blue-50 rounded"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Delete FAQ?")) dispatch(deleteFaq(f._id));
+                        }}
+                        className="p-1 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        <Trash size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -323,7 +430,7 @@ const AdminCourtInfo = () => {
           </section>
         </div>
 
-        {/* RIGHT COLUMN: CONTACTS (Kept stable) */}
+        {/* Sidebar Contacts */}
         <div className="lg:col-span-4 space-y-8">
           <section className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden sticky top-8">
             <div className="bg-slate-900 px-6 py-4 flex justify-between items-center">
@@ -331,8 +438,12 @@ const AdminCourtInfo = () => {
                 <ContactIcon size={18} />
                 <h2 className="font-bold text-xs uppercase tracking-widest">Registry Contact</h2>
               </div>
-              <button 
-                onClick={() => { setIsAddingContact(true); setEditContactId(null); setContactForm({title: "", detail: "", sub: ""}); }} 
+              <button
+                onClick={() => {
+                  setIsAddingContact(true);
+                  setEditContactId(null);
+                  setContactForm({ title: "", detail: "", sub: "" });
+                }}
                 className="text-white hover:text-[#C5A059] transition-colors"
               >
                 <Plus size={20} />
@@ -342,24 +453,37 @@ const AdminCourtInfo = () => {
             <div className="p-6 space-y-6">
               {(isAddingContact || editContactId) && (
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 animate-in zoom-in-95 duration-200">
-                  <input 
-                    className="w-full text-xs font-black bg-white border border-slate-200 p-2 rounded-lg outline-none uppercase focus:border-[#C5A059]" 
+                  <input
+                    className="w-full text-xs font-black bg-white border border-slate-200 p-2 rounded-lg outline-none uppercase focus:border-[#C5A059]"
                     placeholder="Label (e.g. EMAIL)"
                     value={contactForm.title}
-                    onChange={e => setContactForm({...contactForm, title: e.target.value})}
+                    onChange={(e) => setContactForm({ ...contactForm, title: e.target.value })}
                   />
-                  <input 
-                    className="w-full text-sm font-bold bg-white border border-slate-200 p-2 rounded-lg outline-none focus:border-[#C5A059]" 
+                  <input
+                    className="w-full text-sm font-bold bg-white border border-slate-200 p-2 rounded-lg outline-none focus:border-[#C5A059]"
                     placeholder="Details"
                     value={contactForm.detail}
-                    onChange={e => setContactForm({...contactForm, detail: e.target.value})}
+                    onChange={(e) => setContactForm({ ...contactForm, detail: e.target.value })}
                   />
-                  <button onClick={handleContactSubmit} className="w-full bg-[#C5A059] text-white py-2 rounded-lg text-[10px] font-black uppercase shadow-md shadow-[#C5A059]/20 hover:bg-[#b08d4a] transition-all">Save Contact</button>
-                  <button onClick={() => {setIsAddingContact(false); setEditContactId(null);}} className="w-full text-[9px] font-bold text-slate-400">Cancel</button>
+                  <button
+                    onClick={handleContactSubmit}
+                    className="w-full bg-[#C5A059] text-white py-2 rounded-lg text-[10px] font-black uppercase shadow-md shadow-[#C5A059]/20 hover:bg-[#b08d4a] transition-all"
+                  >
+                    Save Contact
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsAddingContact(false);
+                      setEditContactId(null);
+                    }}
+                    className="w-full text-[9px] font-bold text-slate-400"
+                  >
+                    Cancel
+                  </button>
                 </div>
               )}
 
-              {contacts.map(c => (
+              {contacts.map((c) => (
                 <div key={c._id} className="group relative pl-4 border-l-2 border-[#C5A059] py-1">
                   <div className="flex justify-between items-start">
                     <div>
@@ -367,13 +491,27 @@ const AdminCourtInfo = () => {
                       <p className="text-sm font-bold text-slate-800 break-all">{c.detail}</p>
                     </div>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setEditContactId(c._id); setContactForm({title: c.title, detail: c.detail, sub: c.sub || ""}); }} className="text-blue-400 hover:text-blue-600"><Pencil size={12}/></button>
-                      <button onClick={() => { if(window.confirm("Delete contact?")) dispatch(deleteContact(c._id)) }} className="text-red-400 hover:text-red-600"><Trash size={12}/></button>
+                      <button
+                        onClick={() => {
+                          setEditContactId(c._id);
+                          setContactForm({ title: c.title, detail: c.detail, sub: c.sub || "" });
+                        }}
+                        className="text-blue-400 hover:text-blue-600"
+                      >
+                        <Pencil size={12} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm("Delete contact?")) dispatch(deleteContact(c._id));
+                        }}
+                        className="text-red-400 hover:text-red-600"
+                      >
+                        <Trash size={12} />
+                      </button>
                     </div>
                   </div>
                 </div>
               ))}
-              {contacts.length === 0 && <p className="text-center text-slate-400 text-[10px] italic">No contact info set.</p>}
             </div>
           </section>
         </div>

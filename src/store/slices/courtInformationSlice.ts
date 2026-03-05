@@ -19,8 +19,9 @@ export interface DivisionContent {
 export interface Division {
   _id: string;
   name: string;
-  title: string; // The official role (e.g., "Registrar")
+  title: string; 
   description?: string;
+  order: number; // Required for sorting logic
   content: DivisionContent[];
   createdAt: string;
   updatedAt: string;
@@ -90,7 +91,7 @@ export const createDivision = createAsyncThunk(
 
 export const updateDivision = createAsyncThunk(
   "court/updateDivision",
-  async ({ id, formData }: { id: string; formData: FormData }, { rejectWithValue }) => {
+  async ({ id, formData }: { id: string; formData: FormData | any }, { rejectWithValue }) => {
     try {
       const { data } = await api.put(`/courts/divisions/${id}`, formData);
       return data;
@@ -211,12 +212,23 @@ const courtSlice = createSlice({
 
       /* DIVISIONS */
       .addCase(createDivision.fulfilled, (state, action: PayloadAction<Division>) => {
-        state.divisions.unshift(action.payload);
+        state.divisions.push(action.payload);
+        // Ensure list stays sorted after adding new item at the bottom
+        state.divisions.sort((a, b) => (a.order || 0) - (b.order || 0));
         state.loading = false;
       })
-      .addCase(updateDivision.fulfilled, (state, action: PayloadAction<Division>) => {
-        const idx = state.divisions.findIndex((d) => d._id === action.payload._id);
-        if (idx !== -1) state.divisions[idx] = action.payload;
+      .addCase(updateDivision.fulfilled, (state, action: PayloadAction<any>) => {
+        // Handle swap logic (returns full list) or standard update (returns single object)
+        if (action.payload.divisions) {
+          state.divisions = action.payload.divisions;
+        } else {
+          const idx = state.divisions.findIndex((d) => d._id === action.payload._id);
+          if (idx !== -1) {
+            state.divisions[idx] = action.payload;
+          }
+        }
+        // Always maintain order
+        state.divisions.sort((a, b) => (a.order || 0) - (b.order || 0));
         state.loading = false;
       })
       .addCase(deleteDivision.fulfilled, (state, action: PayloadAction<string>) => {

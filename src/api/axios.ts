@@ -5,31 +5,60 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-// Response interceptor to handle token expiration
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
+    }
+  });
+
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // If the error is 401 (Unauthorized) and we haven't retried yet
+    if (originalRequest.url?.includes("/auth/refresh")) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: () => resolve(api(originalRequest)),
+            reject,
+          });
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
 
       try {
-        // Call the refresh endpoint
-        // Note: Use the base axios here to avoid infinite loops
         await axios.post(
           `${import.meta.env.VITE_API_URL}/auth/refresh`,
           {},
           { withCredentials: true }
         );
 
-        // Retry the original request with the new session cookie
+        processQueue(null);
         return api(originalRequest);
-      } catch (refreshError) {
-        // If refresh fails, the Refresh Token is likely expired too
-        // You could dispatch a logout action here or redirect
-        return Promise.reject(refreshError);
+
+      } catch (err) {
+        processQueue(err);
+        return Promise.reject(err);
+
+      } finally {
+        isRefreshing = false;
       }
     }
 

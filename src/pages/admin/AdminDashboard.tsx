@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 // Icons
 import { 
   Users, FileCheck, Clock,
-   Download, Filter, MoreHorizontal 
+  Download, Filter, MoreHorizontal 
 } from 'lucide-react';
 
 // Thunks
@@ -20,10 +20,10 @@ import { type IJudgeGuest } from '../../store/slices/guestSlice';
 const AdminDashboard = () => {
   const dispatch = useAppDispatch();
 
-  // 1. Extract data with corrected state keys (state.guest and state.adminChat)
-  const { users } = useAppSelector((state) => state.users);
-  const { allGuestLists, loading: guestsLoading } = useAppSelector((state) => state.guest);
-  const { files } = useAppSelector((state) => state.files);
+  // 1. Extract data with safety defaults (added empty arrays to prevent mapping nulls)
+  const { users = [] } = useAppSelector((state) => state.users);
+  const { allGuestLists = [], loading: guestsLoading } = useAppSelector((state) => state.guest);
+  const { files = [] } = useAppSelector((state) => state.files);
   const { stats: chatStats } = useAppSelector((state) => state.adminChat);
 
   // 2. Fetch all required data on mount
@@ -34,10 +34,10 @@ const AdminDashboard = () => {
     dispatch(fetchStats());
   }, [dispatch]);
 
-  // 3. Calculate Real-Time Stats with typed parameters
-  const totalJudges = users.filter((u: IUser) => u.role === 'judge').length;
-  const submittedGuestLists = allGuestLists.filter((g: IJudgeGuest) => g.status === 'SUBMITTED').length;
-  const totalFiles = files.length;
+  // 3. Calculate Real-Time Stats with typed parameters and safety checks
+  const totalJudges = users?.filter((u: IUser) => u?.role === 'judge').length || 0;
+  const submittedGuestLists = allGuestLists?.filter((g: IJudgeGuest) => g?.status === 'SUBMITTED').length || 0;
+  const totalFiles = files?.length || 0;
 
   const stats = [
     { label: "Total Judges", value: totalJudges, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
@@ -46,14 +46,22 @@ const AdminDashboard = () => {
     { label: "Sent Messages", value: chatStats?.totalMessages || 0, icon: Clock, color: "text-purple-600", bg: "bg-purple-50" },
   ];
 
-  // 4. Transform Guest Lists for the Table with typed parameter
-  const recentRegistrations = allGuestLists.slice(0, 5).map((list: IJudgeGuest) => ({
-    id: list._id,
-    judge: typeof list.user === 'object' ? list.user.name : "Unknown Officer",
-    guests: list.guests.length,
-    status: list.status === 'SUBMITTED' ? 'Verified' : 'Pending',
-    date: new Date(list.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }));
+  // 4. Transform Guest Lists with robust null-checks to prevent "Cannot read properties of null (reading 'name')"
+  const recentRegistrations = allGuestLists?.slice(0, 5).map((list: IJudgeGuest) => {
+    // Safety check for the list item itself
+    if (!list) return null;
+
+    return {
+      id: list._id,
+      // Check if user object exists and has name property
+      judge: (list.user && typeof list.user === 'object' && 'name' in list.user) 
+        ? (list.user as any).name 
+        : "Unknown Officer",
+      guests: list.guests?.length || 0,
+      status: list.status === 'SUBMITTED' ? 'Verified' : 'Pending',
+      date: list.updatedAt ? new Date(list.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "N/A"
+    };
+  }).filter(Boolean) || []; // Remove any null entries from the array
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -111,41 +119,45 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {recentRegistrations.map((reg) => (
-                <tr key={reg.id} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="px-6 py-4">
-                    <span className="text-sm font-bold text-[#355E3B]">{reg.judge}</span>
-                  </td>
-                  <td className="px-6 py-4 text-xs font-medium text-slate-600">
-                    {reg.guests}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                      reg.status === 'Verified' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                    }`}>
-                      {reg.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">
-                    {reg.date}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="p-2 text-slate-400 hover:text-[#355E3B]">
-                      <MoreHorizontal size={16} />
-                    </button>
+              {recentRegistrations.length > 0 ? (
+                recentRegistrations.map((reg: any) => (
+                  <tr key={reg.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-bold text-[#355E3B]">{reg.judge}</span>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-medium text-slate-600">
+                      {reg.guests}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                        reg.status === 'Verified' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        {reg.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">
+                      {reg.date}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="p-2 text-slate-400 hover:text-[#355E3B]">
+                        <MoreHorizontal size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400 text-xs italic">
+                    No recent registrations found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
       </div>
-
-     
     </div>
   );
 };
-
-
 
 export default AdminDashboard;
