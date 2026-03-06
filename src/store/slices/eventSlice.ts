@@ -1,9 +1,10 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { api } from "../../api/axios";
 
-/* ================= FILTER TYPE ================= */
+/* ================= TYPES ================= */
 
 export type EventFilter = "UPCOMING" | "PAST" | "RECENT" | "ALL";
+export type EventStatus = "SCHEDULED" | "ONGOING" | "COMPLETED" | "CANCELLED";
 
 /* ================= EVENT INTERFACE ================= */
 
@@ -12,10 +13,13 @@ export interface IEvent {
   title: string;
   description: string;
   location: string;
-  date: string; // ISO string
-  time: string;
+  date: string;         // ISO string (Date only)
+  time: string;         // e.g., "14:30"
+  scheduledAt: string;  // ISO string (Combined Date + Time for countdown)
+  status: EventStatus;
   isMandatory: boolean;
-  createdBy: string;
+  capacity?: number;
+  createdBy: string | { _id: string; name: string; role: string };
   createdAt: string;
   updatedAt?: string;
 }
@@ -45,7 +49,7 @@ export const fetchEvents = createAsyncThunk(
       });
       return data;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message);
+      return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to fetch events");
     }
   }
 );
@@ -60,7 +64,7 @@ export const fetchEventById = createAsyncThunk(
       });
       return data;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message);
+      return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to fetch event");
     }
   }
 );
@@ -76,6 +80,8 @@ export const createEvent = createAsyncThunk(
       date: string;
       time: string;
       isMandatory: boolean;
+      capacity?: number;
+      status?: EventStatus;
     },
     thunkAPI
   ) => {
@@ -85,7 +91,7 @@ export const createEvent = createAsyncThunk(
       });
       return data;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message);
+      return thunkAPI.rejectWithValue(err.response?.data?.message || "Creation failed");
     }
   }
 );
@@ -103,7 +109,7 @@ export const updateEvent = createAsyncThunk(
       });
       return data;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message);
+      return thunkAPI.rejectWithValue(err.response?.data?.message || "Update failed");
     }
   }
 );
@@ -118,7 +124,7 @@ export const deleteEvent = createAsyncThunk(
       });
       return id;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message);
+      return thunkAPI.rejectWithValue(err.response?.data?.message || "Deletion failed");
     }
   }
 );
@@ -128,12 +134,18 @@ export const deleteEvent = createAsyncThunk(
 const eventSlice = createSlice({
   name: "events",
   initialState,
-  reducers: {},
+  reducers: {
+    // Helpful for clearing error state on navigation
+    clearEventError: (state) => {
+      state.error = undefined;
+    },
+  },
   extraReducers: (builder) => {
     builder
       /* FETCH ALL */
       .addCase(fetchEvents.pending, (state) => {
         state.loading = true;
+        state.error = undefined;
       })
       .addCase(fetchEvents.fulfilled, (state, action) => {
         state.loading = false;
@@ -151,6 +163,7 @@ const eventSlice = createSlice({
 
       /* CREATE */
       .addCase(createEvent.fulfilled, (state, action) => {
+        // Unshift adds to the top of the list
         state.events.unshift(action.payload);
       })
 
@@ -159,6 +172,10 @@ const eventSlice = createSlice({
         state.events = state.events.map((e) =>
           e._id === action.payload._id ? action.payload : e
         );
+        // Also update the single event state if it's the one being edited
+        if (state.event?._id === action.payload._id) {
+          state.event = action.payload;
+        }
       })
 
       /* DELETE */
@@ -168,4 +185,5 @@ const eventSlice = createSlice({
   },
 });
 
+export const { clearEventError } = eventSlice.actions;
 export default eventSlice.reducer;

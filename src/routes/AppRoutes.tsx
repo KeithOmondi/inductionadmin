@@ -23,6 +23,13 @@ import JudgeMessagePage from "../pages/judge/JudgeMessage";
 import JudgesReligion from "../pages/judge/JudgesReligion";
 import AdminOath from "../pages/admin/AdminOath";
 import ResetPassword from "../components/Login/ResetPassword";
+import GuestLayout from "../components/guests/GuestLayout";
+import GuestDashboardPage from "../pages/guests/GuestDashboard";
+import GuestCourtInfoPage from "../pages/guests/GuestCourtInfo";
+import { GuestMessagesPage } from "../pages/guests/GuestMessages";
+import GuestNoticesPage from "../pages/guests/GuestNotices";
+import GuestEventsPage from "../pages/guests/GuestEvents";
+import AdminUsers from "../pages/admin/AdminUsers";
 
 export default function AppRoutes() {
   return (
@@ -47,6 +54,7 @@ export default function AppRoutes() {
         <Route path="notice" element={<AdminNoticesPage />} />
         <Route path="event" element={<AdminEventsPage />} />
         <Route path="oath" element={<AdminOath />} />
+        <Route path="users" element={<AdminUsers />} />
         {/* Default redirect for /admin */}
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
@@ -71,6 +79,22 @@ export default function AppRoutes() {
 
         {/* Default redirect for /judge */}
         <Route index element={<Navigate to="dashboard" replace />} />
+      </Route>
+
+      <Route
+      path="/guest"
+      element={
+          <ProtectedRoute allowedRoles={["guest"]}>
+            <GuestLayout /> 
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<GuestDashboardPage />} />
+        <Route path="info" element={<GuestCourtInfoPage />} />
+        <Route path="messages" element={<GuestMessagesPage />} />
+        <Route path="notices" element={<GuestNoticesPage />} />
+        <Route path="event" element={<GuestEventsPage />} />
+
       </Route>
 
       {/* 4. ROOT & FALLBACK ROUTES */}

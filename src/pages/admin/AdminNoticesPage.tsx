@@ -5,7 +5,6 @@ import {
   UploadCloud, 
   FileText, 
   X, 
-  Eye, 
   Download,
   Loader2
 } from "lucide-react";
@@ -122,7 +121,7 @@ const AdminNoticesPage = () => {
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex gap-4 text-slate-400 text-[11px] font-medium">
-                        <span className="flex items-center gap-1.5"><Eye size={14} /> {n.views}</span>
+                        
                         <span className="flex items-center gap-1.5"><Download size={14} /> {n.downloads}</span>
                       </div>
                     </td>

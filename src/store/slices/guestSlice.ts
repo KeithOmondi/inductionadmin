@@ -9,7 +9,6 @@ import { api } from "../../api/axios";
 /* =====================================================
    TYPES
 ===================================================== */
-
 export type GuestType = "ADULT" | "MINOR";
 export type Gender = "MALE" | "FEMALE" | "OTHER";
 export type GuestListStatus = "DRAFT" | "SUBMITTED";
@@ -18,22 +17,20 @@ export interface IGuest {
   name?: string;
   type?: GuestType;
   gender?: Gender;
-  idNumber?: string;      // Required for Adults
-  birthCertNumber?: string; // Required for Minors
+  idNumber?: string;
+  birthCertNumber?: string;
   phone?: string;
   email?: string;
 }
 
 export interface IJudgeGuest {
   _id: string;
-  user:
-    | {
-        _id: string;
-        name: string;
-        email: string;
-        role: string;
-      }
-    | string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
   guests: IGuest[];
   status: GuestListStatus;
   createdAt: string;
@@ -58,16 +55,16 @@ const initialState: GuestState = {
    THUNKS
 ===================================================== */
 
-// Helper to handle standardized error messages
-const getErrorMessage = (err: any, fallback: string) => 
+const getErrorMessage = (err: any, fallback: string) =>
   err.response?.data?.message || err.message || fallback;
+
+// --- EXISTING ACTIONS ---
 
 export const fetchMyGuestList = createAsyncThunk(
   "guests/fetchMyGuestList",
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await api.get("/guests/me");
-      // Standardizing: checking if your backend wraps in .data or returns direct object
       return (data.data || data) as IJudgeGuest;
     } catch (err: any) {
       return rejectWithValue(getErrorMessage(err, "Failed to fetch guest list"));
@@ -92,36 +89,67 @@ export const submitGuestList = createAsyncThunk(
   async (guests: IGuest[], { rejectWithValue }) => {
     try {
       const { data } = await api.post("/guests/submit", { guests });
-      return (data.data || data) as IJudgeGuest; 
+      return (data.data || data) as IJudgeGuest;
     } catch (err: any) {
       return rejectWithValue(getErrorMessage(err, "Failed to submit guest list"));
     }
   }
 );
 
-export const addGuests = createAsyncThunk(
-  "guests/addGuests",
-  async (guests: IGuest[], { rejectWithValue }) => {
+// --- REPORTING ACTIONS (NEW) ---
+
+/**
+ * Downloads the Master PDF Report for Admin
+ */
+export const downloadAllGuestsReport = createAsyncThunk(
+  "guests/downloadAllReport",
+  async (_, { rejectWithValue }) => {
     try {
-      const { data } = await api.patch("/guests/add", { guests });
-      return (data.data || data) as IJudgeGuest;
+      const response = await api.get("/guests/all/report", {
+        responseType: "blob", // CRITICAL: Tells axios to handle binary data
+      });
+
+      // Trigger Browser Download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Master_Guest_Registry_${new Date().toLocaleDateString()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return null;
     } catch (err: any) {
-      return rejectWithValue(getErrorMessage(err, "Failed to add guests"));
+      return rejectWithValue("Failed to download master report");
     }
   }
 );
 
-export const deleteGuestList = createAsyncThunk(
-  "guests/deleteGuestList",
-  async (_, { rejectWithValue }) => {
+/**
+ * Downloads a Individual Judge's PDF Report
+ */
+export const downloadJudgeReport = createAsyncThunk(
+  "guests/downloadIndividualReport",
+  async ({ userId, judgeName }: { userId: string; judgeName: string }, { rejectWithValue }) => {
     try {
-      await api.delete("/guests/delete");
-      return null; 
+      const response = await api.get(`/guests/report/${userId}`, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Guest_List_${judgeName.replace(/\s+/g, "_")}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      return null;
     } catch (err: any) {
-      return rejectWithValue(getErrorMessage(err, "Failed to delete guest list"));
+      return rejectWithValue("Failed to download judge report");
     }
   }
 );
+
+// --- ADMIN ACTIONS ---
 
 export const fetchAllGuestLists = createAsyncThunk(
   "guests/fetchAllGuestLists",
@@ -143,27 +171,26 @@ const guestSlice = createSlice({
   name: "guests",
   initialState,
   reducers: {
-    resetGuestState: () => initialState, // Cleaner way to reset to defaults
+    resetGuestState: () => initialState,
   },
   extraReducers: (builder) => {
     builder
-      /* SUCCESS: Specific cases for individual logic */
-      .addCase(deleteGuestList.fulfilled, (state) => {
-        state.loading = false;
-        state.guestList = null;
-      })
       .addCase(fetchAllGuestLists.fulfilled, (state, action) => {
         state.loading = false;
         state.allGuestLists = action.payload;
       })
-      
-      /* SUCCESS: Matcher for any thunk that updates the primary guestList */
+      // Reporting thunks don't need to store data in state, just clear loading
+      .addMatcher(
+        isAnyOf(downloadAllGuestsReport.fulfilled, downloadJudgeReport.fulfilled),
+        (state) => {
+          state.loading = false;
+        }
+      )
       .addMatcher(
         isAnyOf(
-          fetchMyGuestList.fulfilled, 
-          saveGuestList.fulfilled, 
-          submitGuestList.fulfilled, 
-          addGuests.fulfilled
+          fetchMyGuestList.fulfilled,
+          saveGuestList.fulfilled,
+          submitGuestList.fulfilled
         ),
         (state, action: PayloadAction<IJudgeGuest>) => {
           state.loading = false;
@@ -171,20 +198,16 @@ const guestSlice = createSlice({
           state.error = null;
         }
       )
-
-      /* GLOBAL PENDING MATCHERS */
       .addMatcher(
-        (action) => action.type.endsWith("/pending") && action.type.startsWith("guests/"),
+        (action) => action.type.startsWith("guests/") && action.type.endsWith("/pending"),
         (state) => {
           state.loading = true;
           state.error = null;
         }
       )
-
-      /* GLOBAL REJECTED MATCHERS */
       .addMatcher(
-        (action) => action.type.endsWith("/rejected") && action.type.startsWith("guests/"),
-        (state, action: PayloadAction<string>) => {
+        (action) => action.type.startsWith("guests/") && action.type.endsWith("/rejected"),
+        (state, action: any) => {
           state.loading = false;
           state.error = action.payload || "An unexpected error occurred";
         }

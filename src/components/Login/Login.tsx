@@ -28,19 +28,22 @@ const Login: React.FC = () => {
       NORMAL ROLE REDIRECTION
   =========================== */
   useEffect(() => {
-    if (!user) return;
+  if (!user) return;
 
-    switch (user.role) {
-      case "admin":
-        navigate("/admin/dashboard", { replace: true });
-        break;
-      case "judge":
-        navigate("/dashboard", { replace: true });
-        break;
-      default:
-        navigate("/unauthorized", { replace: true });
-    }
-  }, [user, navigate]);
+  switch (user.role) {
+    case "admin":
+      navigate("/admin/dashboard", { replace: true });
+      break;
+    case "judge":
+      navigate("/judge/dashboard", { replace: true });
+      break;
+    case "guest":
+      navigate("/guest/dashboard", { replace: true });
+      break;
+    default:
+      navigate("/unauthorized", { replace: true });
+  }
+}, [user, navigate]);
 
   /* ===========================
       ERROR TOAST HANDLING

@@ -65,6 +65,38 @@ const JudgeGuestsPage: React.FC = () => {
   }, [guestList]);
 
   /* =====================================================
+      VALIDATION LOGIC
+  ===================================================== */
+  const validateGuests = (): boolean => {
+  for (let i = 0; i < guests.length; i++) {
+    const g = guests[i];
+    const label = `Guest #${i + 1}`;
+
+    // Use ?? "" to treat undefined as an empty string for validation
+    const name = g.name ?? "";
+    const gender = g.gender ?? "";
+    const idNumber = g.idNumber ?? "";
+    const phone = g.phone ?? "";
+    const email = g.email ?? "";
+    const birthCert = g.birthCertNumber ?? "";
+
+    // Common Mandatory Fields
+    if (!name.trim()) { toast.error(`${label}: Full Name is required`); return false; }
+    if (!gender) { toast.error(`${label}: Gender is required`); return false; }
+
+    if (g.type === "ADULT") {
+      if (!idNumber.trim()) { toast.error(`${label}: National ID/Passport is required`); return false; }
+      if (!phone.trim()) { toast.error(`${label}: Phone Number is required`); return false; }
+      if (!email.trim()) { toast.error(`${label}: Email Address is required`); return false; }
+      if (!/^\S+@\S+\.\S+$/.test(email)) { toast.error(`${label}: Provide a valid email`); return false; }
+    } else {
+      if (!birthCert.trim()) { toast.error(`${label}: Birth Certificate Number is required`); return false; }
+    }
+  }
+  return true;
+};
+
+  /* =====================================================
       HANDLERS
   ===================================================== */
   const addGuestHandler = (): void => {
@@ -97,6 +129,7 @@ const JudgeGuestsPage: React.FC = () => {
     guests.map(({ uiId, ...rest }) => rest);
 
   const handleSaveDraft = async (): Promise<void> => {
+    // We allow saving drafts with partial info, or you can validate here too
     try {
       await dispatch(saveGuestList(cleanGuestsForApi())).unwrap();
       toast.success("Changes saved to registry.");
@@ -106,6 +139,8 @@ const JudgeGuestsPage: React.FC = () => {
   };
 
   const handleFinalSubmit = async (): Promise<void> => {
+    if (!validateGuests()) return; // Stop if validation fails
+
     setShowConfirmModal(false);
     try {
       await dispatch(submitGuestList(cleanGuestsForApi())).unwrap();
@@ -193,11 +228,11 @@ const JudgeGuestsPage: React.FC = () => {
           </h2>
           <p className="text-slate-600 text-sm leading-relaxed">
             You are allowed to register up to{" "}
-            <span className="font-bold text-slate-900">5 guests</span>. You can
-            update your list at any time.
+            <span className="font-bold text-slate-900">5 guests</span>.
             <br />
-            Kindly ensure the details provided match that on the Identification
-            Documents
+            <span className="font-bold text-slate-900">KIndly ensure all the details provided match that on the Identification Document</span>.
+            <br />
+            <span className="text-amber-600 font-semibold italic">Note: All fields are mandatory for Adults. For Minors, Phone/Email is optional but Birth Certificate is required.</span>
           </p>
         </div>
       </div>
@@ -221,7 +256,7 @@ const JudgeGuestsPage: React.FC = () => {
         </p>
       </div>
 
-      {/* --- GUEST FORMS (STAY EDITABLE) --- */}
+      {/* --- GUEST FORMS --- */}
       <div className="space-y-6">
         {guests.map((guest, index) => (
           <div
@@ -243,12 +278,13 @@ const JudgeGuestsPage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
                 label="Full Name"
+                required
                 value={guest.name}
                 onChange={(v: string) => updateField(guest.uiId, "name", v)}
               />
               <div className="space-y-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Classification
+                  Classification <span className="text-red-500">*</span>
                 </label>
                 <div className="flex gap-2">
                   {(["ADULT", "MINOR"] as GuestType[]).map((t) => (
@@ -263,6 +299,7 @@ const JudgeGuestsPage: React.FC = () => {
               </div>
               <Select
                 label="Gender"
+                required
                 value={guest.gender}
                 options={["MALE", "FEMALE", "OTHER"]}
                 onChange={(v: string) =>
@@ -273,6 +310,7 @@ const JudgeGuestsPage: React.FC = () => {
                 <>
                   <Input
                     label="National ID / Passport"
+                    required
                     value={guest.idNumber}
                     onChange={(v: string) =>
                       updateField(guest.uiId, "idNumber", v)
@@ -280,6 +318,7 @@ const JudgeGuestsPage: React.FC = () => {
                   />
                   <Input
                     label="Phone Number"
+                    required
                     value={guest.phone}
                     onChange={(v: string) =>
                       updateField(guest.uiId, "phone", v)
@@ -287,6 +326,7 @@ const JudgeGuestsPage: React.FC = () => {
                   />
                   <Input
                     label="Email Address"
+                    required
                     value={guest.email}
                     onChange={(v: string) =>
                       updateField(guest.uiId, "email", v)
@@ -294,20 +334,30 @@ const JudgeGuestsPage: React.FC = () => {
                   />
                 </>
               ) : (
-                <Input
-                  label="Birth Certificate Number"
-                  value={guest.birthCertNumber}
-                  onChange={(v: string) =>
-                    updateField(guest.uiId, "birthCertNumber", v)
-                  }
-                />
+                <>
+                  <Input
+                    label="Birth Certificate Number"
+                    required
+                    value={guest.birthCertNumber}
+                    onChange={(v: string) =>
+                      updateField(guest.uiId, "birthCertNumber", v)
+                    }
+                  />
+                  <Input
+                    label="Guardian Phone (Optional)"
+                    value={guest.phone}
+                    onChange={(v: string) =>
+                      updateField(guest.uiId, "phone", v)
+                    }
+                  />
+                </>
               )}
             </div>
           </div>
         ))}
       </div>
 
-      {/* --- FOOTER ACTIONS (ALWAYS ACTIVE) --- */}
+      {/* --- FOOTER ACTIONS --- */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t border-slate-100">
         <button
           onClick={addGuestHandler}
@@ -328,10 +378,13 @@ const JudgeGuestsPage: React.FC = () => {
             ) : (
               <Save size={14} />
             )}
-            Save Progress
+            Save Draft
           </button>
           <button
-            onClick={() => setShowConfirmModal(true)}
+            onClick={() => {
+              // Trigger validation before showing modal
+              if(validateGuests()) setShowConfirmModal(true);
+            }}
             disabled={loading}
             className="px-8 py-3 bg-[#355E3B] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#2a4a2e] shadow-lg shadow-[#355E3B]/20 flex items-center gap-2 transition-all"
           >
@@ -343,25 +396,26 @@ const JudgeGuestsPage: React.FC = () => {
 
       {isSubmitted && (
         <div className="flex items-center justify-center gap-2 text-green-600 text-[10px] font-black uppercase tracking-widest">
-          <CheckCircle size={14} /> Registry currently active in system
+          <CheckCircle size={14} /> ORHC currently active in system
         </div>
       )}
     </div>
   );
 };
 
-/* --- Reusable Components (Explicitly Typed) --- */
+/* --- Updated Reusable Components --- */
 
 interface InputProps {
   label: string;
   value?: string;
+  required?: boolean;
   onChange: (v: string) => void;
 }
 
-const Input: React.FC<InputProps> = ({ label, value, onChange }) => (
+const Input: React.FC<InputProps> = ({ label, value, required, onChange }) => (
   <div className="space-y-1">
     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
-      {label}
+      {label} {required && <span className="text-red-500">*</span>}
     </label>
     <input
       type="text"
@@ -370,7 +424,7 @@ const Input: React.FC<InputProps> = ({ label, value, onChange }) => (
         onChange(e.target.value)
       }
       className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:border-[#355E3B] outline-none transition-all"
-      placeholder="Required..."
+      placeholder={required ? "Mandatory..." : "Optional..."}
     />
   </div>
 );
@@ -378,14 +432,15 @@ const Input: React.FC<InputProps> = ({ label, value, onChange }) => (
 interface SelectProps {
   label: string;
   value?: string;
+  required?: boolean;
   options: string[];
   onChange: (v: string) => void;
 }
 
-const Select: React.FC<SelectProps> = ({ label, value, options, onChange }) => (
+const Select: React.FC<SelectProps> = ({ label, value, required, options, onChange }) => (
   <div className="space-y-1">
     <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">
-      {label}
+      {label} {required && <span className="text-red-500">*</span>}
     </label>
     <select
       value={value || ""}

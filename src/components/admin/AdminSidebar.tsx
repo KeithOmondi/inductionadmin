@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   ShieldCheck,
+  User,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../store/store";
@@ -91,7 +92,7 @@ const AdminSidebar: React.FC = () => {
             </div>
             <div>
               <h2 className="text-sm font-black text-slate-800 tracking-tight">
-                REGISTRY
+                ORHC
               </h2>
               <p className="text-[9px] font-bold text-[#C5A059] uppercase tracking-widest mt-0.5">
                 Admin Console
@@ -176,6 +177,17 @@ const AdminSidebar: React.FC = () => {
             >
               <Users size={18} />
               Events
+            </NavLink>
+
+            <NavLink
+              to="/admin/users"
+              onClick={() => setIsOpen(false)}
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? activeClass : inactiveClass}`
+              }
+            >
+              <User size={18} />
+              Users
             </NavLink>
           </nav>
         </div>

@@ -1,3 +1,4 @@
+// src/pages/guests/GuestCourtInfoPage.tsx
 import React, { useEffect, useState } from "react";
 import {
   ChevronDown,
@@ -10,7 +11,10 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { fetchCourtInfo } from "../../store/slices/courtInformationSlice";
+import {
+  fetchGuestCourtInfo,
+  clearCourtError,
+} from "../../store/slices/guests/guestCourtInfoSlice";
 
 /* =====================================================
     REUSABLE SUB-COMPONENTS
@@ -22,7 +26,7 @@ const ContactCard: React.FC<{
   sub?: string;
 }> = ({ title, detail, sub }) => {
   const getIcon = () => {
-    const t = title.toLowerCase();
+    const t = (title + detail).toLowerCase();
     if (t.includes("email") || t.includes("@")) return <Mail size={24} />;
     if (t.includes("location") || t.includes("address"))
       return <MapPin size={24} />;
@@ -109,7 +113,7 @@ const MandateModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
 };
 
 /* =====================================================
-    LEADERSHIP MODAL (Now fully Dynamic)
+    LEADERSHIP MODAL (Dynamic & Styled)
 ===================================================== */
 
 const LeadershipModal: React.FC<{
@@ -135,7 +139,7 @@ const LeadershipModal: React.FC<{
             <div className="absolute inset-y-0 left-8 w-1 bg-[#C5A059]" />
           </div>
           <img
-            src={data.content?.[0]?.url}
+            src={data.content?.find((c: any) => c.type === "IMAGE")?.url || "https://via.placeholder.com/400x600"}
             className="absolute inset-0 w-full h-full object-cover object-top"
             alt={data.name}
           />
@@ -155,7 +159,7 @@ const LeadershipModal: React.FC<{
               <div className="w-px h-10 bg-slate-300" />
               <img
                 src="https://res.cloudinary.com/drls2cpnu/image/upload/v1772111715/JOB_LOGO_ebsbgu.jpg"
-                className="h-30 w-50"
+                className="h-20 w-auto"
                 alt="Judiciary Logo"
               />
             </div>
@@ -168,18 +172,17 @@ const LeadershipModal: React.FC<{
           </div>
 
           <div className="space-y-8 max-w-2xl mx-auto">
-            <h2
-              className="text-[#1a1a1a] text-6xl md:text-7xl font-light italic leading-none"
-              style={{ fontFamily: "serif" }}
-            >
-              Congratulations
+            <h2 className="text-[#1a1a1a] text-5xl md:text-6xl font-light italic leading-none font-serif">
+              Official Message
             </h2>
             <div className="space-y-5">
               <p className="font-serif text-2xl text-slate-800 font-semibold italic">
                 Greetings,
               </p>
               <div className="text-slate-700 leading-relaxed text-lg font-serif whitespace-pre-line">
-                {data.content?.[0]?.body}
+                {data.content?.find((c: any) => c.type === "TEXT")?.body || 
+                 data.content?.find((c: any) => c.type === "IMAGE")?.body || 
+                 "No official message available at this time."}
               </div>
             </div>
 
@@ -193,7 +196,7 @@ const LeadershipModal: React.FC<{
                   {data.name}
                 </p>
               </div>
-              <div className="flex flex-col items-end group">
+              <div className="flex flex-col items-end">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 flex items-center justify-center">
                     <img
@@ -227,16 +230,52 @@ const LeadershipModal: React.FC<{
     MAIN PAGE COMPONENT
 ===================================================== */
 
-const CourtInformation: React.FC = () => {
+const GuestCourtInfoPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { divisions, faqs, contacts } = useAppSelector((state) => state.court);
+  const { divisions, faqs, contacts, loading, error } = useAppSelector(
+    (state) => state.guestCourtInfo,
+  );
+
   const [openFaq, setOpenFaq] = useState<string | null>(null);
-  const [selectedJudge, setSelectedJudge] = useState<any | null>(null);
+  const [selectedLeader, setSelectedLeader] = useState<any | null>(null);
   const [isMandateOpen, setIsMandateOpen] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchCourtInfo());
+    const promise = dispatch(fetchGuestCourtInfo());
+    return () => {
+      promise.abort();
+      dispatch(clearCourtError());
+    };
   }, [dispatch]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-[70vh] items-center justify-center space-y-4">
+        <div className="w-12 h-12 border-4 border-[#C5A059] border-t-[#355E3B] rounded-full animate-spin" />
+        <p className="text-[#355E3B] font-serif animate-pulse">
+          Verifying Registry Records...
+        </p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-xl mx-auto mt-20 p-8 text-center bg-white border border-red-100 rounded-[2rem] shadow-xl">
+        <div className="text-red-500 mb-4 flex justify-center">
+          <X size={48} />
+        </div>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Connection Error</h2>
+        <p className="text-slate-500 mb-6">{error}</p>
+        <button
+          onClick={() => dispatch(fetchGuestCourtInfo())}
+          className="px-6 py-2 bg-[#355E3B] text-white rounded-full hover:bg-[#2a4a2e] transition-colors"
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-12 p-6 animate-in fade-in duration-1000">
@@ -247,7 +286,7 @@ const CourtInformation: React.FC = () => {
           The High Court of Kenya
         </h1>
         <p className="text-slate-500 max-w-2xl mx-auto font-medium">
-          Established under Article 165 of the Constitution of Kenya.
+          Established under Article 165 of the Constitution of Kenya. Registry & Public Information
         </p>
       </section>
 
@@ -264,12 +303,12 @@ const CourtInformation: React.FC = () => {
             {divisions.map((d) => (
               <div
                 key={d._id}
-                onClick={() => setSelectedJudge(d)}
+                onClick={() => setSelectedLeader(d)}
                 className="group cursor-pointer bg-white border border-slate-100 p-6 rounded-[2.5rem] flex items-center gap-6 shadow-md hover:shadow-xl hover:border-[#355E3B] transition-all duration-500"
               >
                 <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#C5A059] shrink-0 group-hover:scale-105 transition-transform">
                   <img
-                    src={d.content?.find((c) => c.type === "IMAGE")?.url}
+                    src={d.content?.find((c: any) => c.type === "IMAGE")?.url || "https://via.placeholder.com/150"}
                     className="w-full h-full object-cover"
                     alt={d.name}
                   />
@@ -281,7 +320,7 @@ const CourtInformation: React.FC = () => {
                   <p className="text-xs font-black text-[#C5A059] uppercase tracking-widest mt-1">
                     {d.title}
                   </p>
-                  <p className="text-slate-400 text-[10px] mt-2 font-bold uppercase">
+                  <p className="text-slate-400 text-[10px] mt-2 font-bold uppercase italic">
                     View Official Message • ✉
                   </p>
                 </div>
@@ -300,7 +339,7 @@ const CourtInformation: React.FC = () => {
           </div>
           <div
             onClick={() => setIsMandateOpen(true)}
-            className="group cursor-pointer bg-[#355E3B] text-white rounded-[2.5rem] p-10 shadow-xl relative overflow-hidden transition-transform hover:scale-[1.01] h-full"
+            className="group cursor-pointer bg-[#355E3B] text-white rounded-[2.5rem] p-10 shadow-xl relative overflow-hidden transition-transform hover:scale-[1.01] h-full flex flex-col justify-center"
           >
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
               <Scale size={120} />
@@ -309,38 +348,13 @@ const CourtInformation: React.FC = () => {
               Article 165
             </h3>
             <p className="text-slate-200 italic leading-relaxed line-clamp-6 text-lg">
-              a) unlimited original jurisdiction in criminal and civil matters;
-              (b) jurisdiction to determine the question whether a right or
-              fundamental freedom in the Bill of Rights has been denied,
-              violated, infringed or threatened; (c) jurisdiction to hear an
-              appeal from a decision of a tribunal appointed under this
-              Constitution to consider the removal of a person from office,
-              other than a tribunal appointed under Article 144; (d)
-              jurisdiction to hear any question respecting the interpretation of
-              this Constitution including the determination of— (i) the question
-              whether any law is inconsistent with or in contravention of this
-              Constitution; (ii) the question whether anything said to be done
-              under the authority of this Constitution or of any law is
-              inconsistent with, or in contravention of, this Constitution;
-              (iii) any matter relating to constitutional powers of State organs
-              in respect of county governments and any matter relating to the
-              constitutional relationship between the levels of government; and
-              (iv) a question relating to conflict of laws under Article 191;
-              and (e) any other jurisdiction, original or appellate, conferred
-              on it by legislation. (4) Any matter certified by the court as
-              raising a substantial question of law under clause (3) (b) or (d)
-              shall be heard by an uneven number of judges, being not less than
-              three, assigned by the Chief Justice. (5) The High Court shall not
-              have jurisdiction in respect of matters— (a) reserved for the
-              exclusive jurisdiction of the Supreme Court under this
-              Constitution; or (b) falling within the jurisdiction of the courts
-              contemplated in Article 162 (2). (6) The High Court has
-              supervisory jurisdiction over the subordinate courts and over any
-              person, body or authority exercising a judicial or quasi-judicial
-              function, but not over a superior court.
+              The High Court has unlimited original jurisdiction in criminal and civil matters; 
+              jurisdiction to determine questions regarding the Bill of Rights; 
+              supervisory jurisdiction over subordinate courts and over any person, 
+              body or authority exercising a judicial function...
             </p>
             <div className="mt-8 flex items-center gap-2 text-[#C5A059] font-black text-[10px] uppercase tracking-widest bg-white/5 w-fit px-4 py-2 rounded-full">
-              Read Full Constitution Mandate <ExternalLink size={14} />
+              Read Full Constitutional Mandate <ExternalLink size={14} />
             </div>
           </div>
         </section>
@@ -351,7 +365,7 @@ const CourtInformation: React.FC = () => {
         <div className="flex items-center gap-4 mb-8">
           <BookOpen className="text-[#355E3B]" size={28} />
           <h2 className="text-[#355E3B] font-serif text-2xl font-bold">
-            FREQUENTLY ASKED QUESTIONS
+            Registry FAQ
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -385,21 +399,21 @@ const CourtInformation: React.FC = () => {
 
       {/* CONTACTS SECTION */}
       <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {contacts.map((contact) => (
+        {contacts.map((c) => (
           <ContactCard
-            key={contact._id}
-            title={contact.title}
-            detail={contact.detail}
-            sub={contact.sub}
+            key={c._id}
+            title={c.title}
+            detail={c.email || c.phone || c.address || "Contact Info"}
+            sub={c.address ? "Location" : c.email ? "Email Support" : "Phone Line"}
           />
         ))}
       </section>
 
       {/* MODALS */}
       <LeadershipModal
-        isOpen={!!selectedJudge}
-        onClose={() => setSelectedJudge(null)}
-        data={selectedJudge}
+        isOpen={!!selectedLeader}
+        onClose={() => setSelectedLeader(null)}
+        data={selectedLeader}
       />
       <MandateModal
         isOpen={isMandateOpen}
@@ -409,4 +423,4 @@ const CourtInformation: React.FC = () => {
   );
 };
 
-export default CourtInformation;
+export default GuestCourtInfoPage;

@@ -104,8 +104,13 @@ export const adminUpdateSwearingPreference = createAsyncThunk(
 export const deleteSwearingPreference = createAsyncThunk(
   "swearingPreference/delete",
   async (userId: string, { rejectWithValue }) => {
+    // Prevent the request if userId is falsy
+    if (!userId || userId === "undefined") {
+      return rejectWithValue("Invalid User ID provided");
+    }
+
     try {
-      await api.delete(`/oath/${userId}`);
+      await api.delete(`/oath/delete/${userId}`);
       return userId;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || "Failed to delete preference");

@@ -7,12 +7,24 @@ import {
   deleteEvent,
   type IEvent,
   type EventFilter,
+  type EventStatus,
 } from "../../store/slices/eventSlice";
 import { 
   Plus, Trash2, Edit2, Calendar, MapPin, 
-  Clock, AlertCircle, X, Search, Filter
+  Clock, AlertCircle, X, Search, Filter, 
+  Timer
 } from "lucide-react";
 import toast from "react-hot-toast";
+
+// Helper for real-time countdown calculation
+const getTimeRemaining = (targetDate: string) => {
+  const total = Date.parse(targetDate) - Date.parse(new Date().toString());
+  if (total <= 0) return "Started";
+  const days = Math.floor(total / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((total / 1000 / 60) % 60);
+  return days > 0 ? `${days}d ${hours}h` : `${hours}h ${minutes}m`;
+};
 
 const AdminEventsPage = () => {
   const dispatch = useAppDispatch();
@@ -30,13 +42,15 @@ const AdminEventsPage = () => {
     location: "",
     date: "",
     time: "",
+    status: "SCHEDULED" as EventStatus,
+    capacity: 0,
     isMandatory: false,
   });
 
   /* ---------------- EFFECTS ---------------- */
   useEffect(() => {
-    // Fetch events based on active filter (ALL, UPCOMING, etc.)
-    dispatch(fetchEvents({ filter: activeFilter === "ALL" ? undefined : activeFilter }));
+    const filterParam = activeFilter === "ALL" ? undefined : activeFilter;
+    dispatch(fetchEvents({ filter: filterParam }));
   }, [dispatch, activeFilter]);
 
   /* ---------------- HANDLERS ---------------- */
@@ -45,10 +59,9 @@ const AdminEventsPage = () => {
   ) => {
     const target = e.target as HTMLInputElement;
     const { name, value, type, checked } = target;
-
     setForm((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: type === "checkbox" ? checked : type === "number" ? Number(value) : value,
     }));
   };
 
@@ -61,6 +74,8 @@ const AdminEventsPage = () => {
         location: event.location,
         date: event.date.split("T")[0],
         time: event.time,
+        status: event.status,
+        capacity: event.capacity || 0,
         isMandatory: event.isMandatory,
       });
     } else {
@@ -71,6 +86,8 @@ const AdminEventsPage = () => {
         location: "",
         date: "",
         time: "",
+        status: "SCHEDULED",
+        capacity: 0,
         isMandatory: false,
       });
     }
@@ -79,33 +96,29 @@ const AdminEventsPage = () => {
 
   const handleSubmit = async () => {
     if (!form.title || !form.date || !form.time) {
-      return toast.error("Please fill in all required fields.");
+      return toast.error("Required: Title, Date, and Time.");
     }
 
     try {
       if (editingEvent) {
         await dispatch(updateEvent({ id: editingEvent._id, formData: form })).unwrap();
-        toast.success("Event updated successfully");
+        toast.success("Judicial record updated");
       } else {
         await dispatch(createEvent(form)).unwrap();
-        toast.success("Event published to registry");
+        toast.success("Protocol published to registry");
       }
       setShowModal(false);
     } catch (err: any) {
-      toast.error(err || "Action failed");
+      toast.error(err || "Registry update failed");
     }
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to remove this event from the judicial registry?")) {
-      dispatch(deleteEvent(id))
-        .unwrap()
-        .then(() => toast.success("Event deleted"))
-        .catch((err) => toast.error(err));
+    if (window.confirm("Permanently strike this event from the High Court registry?")) {
+      dispatch(deleteEvent(id)).unwrap().then(() => toast.success("Record purged"));
     }
   };
 
-  /* ---------------- SEARCH FILTER ---------------- */
   const filteredEvents = useMemo(() => {
     return events.filter(e => 
       e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -119,22 +132,20 @@ const AdminEventsPage = () => {
       {/* 1. HEADER & SEARCH */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-slate-100 pb-10">
         <div className="space-y-1">
-          <h1 className="text-[#355E3B] font-serif text-4xl font-black tracking-tight">Events Calendar</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Events Management</p>
+          <h1 className="text-[#355E3B] font-serif text-4xl font-black tracking-tight">Judicial Registry</h1>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Protocol & Scheduling Management</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-          {/* Filter Dropdown */}
           <div className="relative w-full sm:w-auto">
             <select 
               value={activeFilter}
               onChange={(e) => setActiveFilter(e.target.value as EventFilter)}
-              className="appearance-none w-full bg-slate-100 border-none rounded-xl pl-10 pr-8 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-600 outline-none focus:ring-2 focus:ring-[#355E3B]/10 cursor-pointer"
+              className="appearance-none w-full bg-slate-100 border-none rounded-xl pl-10 pr-10 py-2.5 text-[11px] font-black uppercase tracking-wider text-slate-600 outline-none focus:ring-2 focus:ring-[#355E3B]/10 cursor-pointer"
             >
-              <option value="ALL">All Events</option>
+              <option value="ALL">All Proceedings</option>
               <option value="UPCOMING">Upcoming</option>
               <option value="PAST">Archive</option>
-              <option value="RECENT">Recently Added</option>
             </select>
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           </div>
@@ -142,11 +153,9 @@ const AdminEventsPage = () => {
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
-              type="text"
-              placeholder="Search registry..."
+              type="text" placeholder="Search title or venue..."
               className="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-[#355E3B]/10 outline-none"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           
@@ -154,71 +163,64 @@ const AdminEventsPage = () => {
             onClick={() => openModal()}
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#355E3B] text-white px-6 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-[#2a4b2f] transition-all shadow-xl shadow-[#355E3B]/20 active:scale-95"
           >
-            <Plus size={18} /> Add Event
+            <Plus size={18} /> New Entry
           </button>
         </div>
       </div>
 
       {/* 2. EVENTS LIST */}
-      <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 gap-6">
         {loading ? (
           <div className="py-20 flex justify-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#355E3B]" /></div>
         ) : filteredEvents.length === 0 ? (
           <div className="py-24 text-center bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
             <Calendar className="mx-auto text-slate-200 mb-4" size={64} />
-            <p className="text-slate-400 font-serif italic text-lg">No matching judicial events found.</p>
+            <p className="text-slate-400 font-serif italic text-lg">No active records found.</p>
           </div>
         ) : (
           filteredEvents.map((event) => (
-            <div key={event._id} className="bg-white border border-slate-200 p-6 rounded-[2rem] hover:shadow-xl hover:shadow-slate-200/50 transition-all group flex flex-col lg:flex-row items-center gap-8">
+            <div key={event._id} className="bg-white border border-slate-200 p-6 rounded-[2.5rem] hover:shadow-2xl hover:shadow-slate-200/50 transition-all group relative overflow-hidden flex flex-col lg:flex-row items-center gap-8">
               
-              {/* Date Block */}
+              {/* Status Ribbon */}
+              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                event.status === 'CANCELLED' ? 'bg-red-500' : 
+                event.status === 'COMPLETED' ? 'bg-blue-500' : 'bg-[#355E3B]'
+              }`} />
+
               <div className="flex items-center gap-6 w-full lg:w-auto">
-                <div className="bg-[#355E3B] text-white p-5 rounded-[1.5rem] text-center min-w-[110px] shadow-lg shadow-[#355E3B]/20">
+                <div className="bg-[#355E3B] text-white p-6 rounded-[2rem] text-center min-w-[120px] shadow-lg shadow-[#355E3B]/20">
                   <p className="text-[10px] font-black uppercase opacity-60 tracking-widest mb-1">
                     {new Date(event.date).toLocaleString('en-US', { month: 'short' })}
                   </p>
-                  <p className="text-3xl font-serif font-black">
-                    {new Date(event.date).getDate()}
-                  </p>
+                  <p className="text-4xl font-serif font-black">{new Date(event.date).getDate()}</p>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest ${
+                      event.status === 'SCHEDULED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                      event.status === 'CANCELLED' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-600 border-slate-100'
+                    }`}>
+                      {event.status}
+                    </span>
                     {event.isMandatory && (
-                      <span className="flex items-center gap-1 text-[9px] font-black text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-100 uppercase tracking-widest">
+                      <span className="flex items-center gap-1 text-[9px] font-black text-[#C5A059] bg-[#C5A059]/5 px-2.5 py-1 rounded-full border border-[#C5A059]/10 uppercase tracking-widest">
                         <AlertCircle size={10} /> Mandatory
                       </span>
                     )}
                   </div>
-                  <h3 className="text-[#355E3B] text-xl font-bold group-hover:text-[#C5A059] transition-colors">
-                    {event.title}
-                  </h3>
-                  <div className="flex flex-wrap items-center gap-4 text-slate-400">
-                    <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-tight">
-                      <Clock size={14} className="text-[#C5A059]" /> {event.time}
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-tight">
-                      <MapPin size={14} className="text-[#C5A059]" /> {event.location}
-                    </span>
+                  <h3 className="text-[#355E3B] text-2xl font-bold group-hover:text-[#C5A059] transition-colors">{event.title}</h3>
+                  <div className="flex flex-wrap items-center gap-5 text-slate-400">
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase"><Clock size={14} className="text-[#C5A059]" /> {event.time}</span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase"><MapPin size={14} className="text-[#C5A059]" /> {event.location}</span>
+                    <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase"><Timer size={14} className="text-[#355E3B]" /> {getTimeRemaining(event.scheduledAt)}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-2 w-full lg:w-auto justify-end ml-auto pt-6 lg:pt-0 border-t lg:border-t-0 border-slate-50">
-                <button
-                  onClick={() => openModal(event)}
-                  className="p-3.5 bg-slate-50 text-slate-600 rounded-2xl hover:bg-[#C5A059]/10 hover:text-[#C5A059] transition-all"
-                >
-                  <Edit2 size={18} />
-                </button>
-                <button
-                  onClick={() => handleDelete(event._id)}
-                  className="p-3.5 bg-slate-50 text-slate-600 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-all"
-                >
-                  <Trash2 size={18} />
-                </button>
+              <div className="flex gap-2 w-full lg:w-auto justify-end ml-auto pt-6 lg:pt-0">
+                <button onClick={() => openModal(event)} className="p-4 bg-slate-50 text-slate-600 rounded-2xl hover:bg-[#C5A059]/10 hover:text-[#C5A059] transition-all"><Edit2 size={18} /></button>
+                <button onClick={() => handleDelete(event._id)} className="p-4 bg-slate-50 text-slate-600 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-all"><Trash2 size={18} /></button>
               </div>
             </div>
           ))
@@ -228,82 +230,66 @@ const AdminEventsPage = () => {
       {/* 3. MODAL OVERLAY */}
       {showModal && (
         <div className="fixed inset-0 bg-[#355E3B]/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            
+          <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-10 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
-                <h2 className="text-[#355E3B] font-serif text-3xl font-black">
-                  {editingEvent ? "Revise Directive" : "New Protocol"}
-                </h2>
-                <p className="text-[10px] font-black text-[#C5A059] uppercase tracking-[0.2em] mt-1">Calendar Entry System</p>
+                <h2 className="text-[#355E3B] font-serif text-3xl font-black">{editingEvent ? "Modify Proceeding" : "Schedule Proceeding"}</h2>
+                <p className="text-[10px] font-black text-[#C5A059] uppercase tracking-[0.2em] mt-1">Registry Entry Terminal</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="bg-white p-2 rounded-full shadow-sm hover:text-red-500 transition-colors">
-                <X size={24} />
-              </button>
+              <button onClick={() => setShowModal(false)} className="bg-white p-3 rounded-full shadow-sm hover:text-red-500 transition-colors"><X size={24} /></button>
             </div>
 
-            <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="p-10 grid grid-cols-1 md:grid-cols-2 gap-6 max-h-[65vh] overflow-y-auto">
               <div className="md:col-span-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Title of Proceeding</label>
-                <input
-                  type="text" name="title" value={form.title} onChange={handleChange}
-                  className="w-full bg-slate-50 border-2 border-transparent focus:border-[#C5A059]/30 rounded-2xl px-5 py-4 text-sm outline-none transition-all"
-                  placeholder="Official Title"
-                />
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Case/Event Title</label>
+                <input type="text" name="title" value={form.title} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent focus:border-[#C5A059]/30 rounded-2xl px-5 py-4 text-sm outline-none" />
               </div>
 
               <div className="md:col-span-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Event Description</label>
-                <textarea
-                  name="description" value={form.description} onChange={handleChange} rows={3}
-                  className="w-full bg-slate-50 border-2 border-transparent focus:border-[#C5A059]/30 rounded-2xl px-5 py-4 text-sm outline-none transition-all resize-none"
-                  placeholder="Details regarding the event..."
-                />
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Brief Description</label>
+                <textarea name="description" value={form.description} onChange={handleChange} rows={3} className="w-full bg-slate-50 border-2 border-transparent focus:border-[#C5A059]/30 rounded-2xl px-5 py-4 text-sm outline-none resize-none" />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Scheduled Date</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Date</label>
                 <input type="date" name="date" value={form.date} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none" />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Session Time</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Time</label>
                 <input type="time" name="time" value={form.time} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none" />
               </div>
 
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Venue Location</label>
-                <input type="text" name="location" value={form.location} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none" placeholder="Court Room / Hotel" />
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Lifecycle Status</label>
+                <select name="status" value={form.status} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none">
+                  <option value="SCHEDULED">SCHEDULED</option>
+                  <option value="ONGOING">ONGOING</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                </select>
               </div>
 
-              <div className="flex items-center gap-4 pt-6">
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="checkbox" 
-                    name="isMandatory" 
-                    id="mand" 
-                    checked={form.isMandatory} 
-                    onChange={handleChange} 
-                    className="w-6 h-6 rounded-lg accent-[#355E3B]" 
-                  />
-                  <label htmlFor="mand" className="text-[10px] font-black uppercase tracking-widest text-red-600 cursor-pointer">Mark as Mandatory proceeding</label>
-                </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Seating Capacity</label>
+                <input type="number" name="capacity" value={form.capacity} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none" placeholder="Leave empty if N/A" />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Court Venue/Location</label>
+                <input type="text" name="location" value={form.location} onChange={handleChange} className="w-full bg-slate-50 border-2 border-transparent rounded-2xl px-5 py-4 text-sm outline-none" />
+              </div>
+
+              <div className="md:col-span-2 flex items-center gap-3 bg-slate-50 p-4 rounded-2xl">
+                <input type="checkbox" name="isMandatory" id="mand" checked={form.isMandatory} onChange={handleChange} className="w-5 h-5 accent-[#355E3B]" />
+                <label htmlFor="mand" className="text-[10px] font-black uppercase tracking-widest text-red-600 cursor-pointer">Constitutional/Mandatory Attendance Required</label>
               </div>
             </div>
 
             <div className="px-10 py-8 bg-slate-50 flex justify-end gap-4">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-8 py-4 rounded-2xl text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-all"
-              >
-                Dismiss
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="px-10 py-4 bg-[#355E3B] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#2a4b2f] shadow-2xl shadow-[#355E3B]/40 transition-all disabled:opacity-50"
-              >
-                {editingEvent ? "Update Record" : "Publish to Registry"}
+              <button onClick={() => setShowModal(false)} className="px-8 py-4 rounded-2xl text-slate-400 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Cancel</button>
+              <button onClick={handleSubmit} disabled={loading} className="px-10 py-4 bg-[#355E3B] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#2a4b2f] shadow-2xl transition-all disabled:opacity-50">
+                {editingEvent ? "Commit Changes" : "Publish Record"}
               </button>
             </div>
           </div>

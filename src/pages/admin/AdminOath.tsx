@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   getAllSwearingPreferences,
@@ -6,14 +6,18 @@ import {
   clearSwearingPreferenceState,
 } from "../../store/slices/swearingPreferenceSlice";
 import type { AppDispatch, RootState } from "../../store/store";
+import { Loader2, RefreshCcw, Trash2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const AdminOath = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const { preferences, loading, error } = useSelector(
     (state: RootState) => state.swearingPreference,
   );
 
+  // Initial Load
   useEffect(() => {
     dispatch(getAllSwearingPreferences());
     return () => {
@@ -21,9 +25,35 @@ const AdminOath = () => {
     };
   }, [dispatch]);
 
-  const handleDelete = (userId: string) => {
+  // Handle auto-hide success message
+  useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => setShowSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccess]);
+
+  const handleDelete = async (userId: string | undefined) => {
+    if (!userId) {
+      alert("System Error: This record is missing a valid User ID link.");
+      return;
+    }
+
     if (window.confirm("Confirm: Permanently delete this preference record?")) {
-      dispatch(deleteSwearingPreference(userId));
+      setDeletingId(userId);
+      try {
+        // Wait for deletion to complete on server
+        await dispatch(deleteSwearingPreference(userId)).unwrap();
+        
+        // AUTO-REFRESH: Re-fetch the database list immediately
+        await dispatch(getAllSwearingPreferences()).unwrap();
+        
+        setShowSuccess(true);
+      } catch (err) {
+        console.error("Delete failed:", err);
+      } finally {
+        setDeletingId(null);
+      }
     }
   };
 
@@ -41,17 +71,30 @@ const AdminOath = () => {
         </div>
         <button
           onClick={() => dispatch(getAllSwearingPreferences())}
-          className="bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest px-6 py-2.5 rounded-xl hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+          disabled={loading}
+          className="flex items-center gap-2 bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest px-6 py-2.5 rounded-xl hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
         >
+          {loading ? <Loader2 className="animate-spin" size={12} /> : <RefreshCcw size={12} />}
           Refresh Database
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase tracking-widest p-4 rounded-xl">
-          Error Log: {error}
-        </div>
-      )}
+      {/* Status Messages */}
+      <div className="space-y-2">
+        {error && (
+          <div className="bg-red-50 border border-red-100 text-red-600 text-[10px] font-bold uppercase tracking-widest p-4 rounded-xl flex items-center gap-3">
+            <AlertCircle size={16} />
+            <span>Error Log: {error}</span>
+          </div>
+        )}
+        
+        {showSuccess && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-600 text-[10px] font-bold uppercase tracking-widest p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-2">
+            <CheckCircle2 size={16} />
+            <span>Record Updated Successfully</span>
+          </div>
+        )}
+      </div>
 
       {/* Table Section */}
       <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
@@ -79,9 +122,9 @@ const AdminOath = () => {
             <tbody className="divide-y divide-slate-50">
               {loading && preferences.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <div className="w-8 h-8 border-2 border-[#b48222] border-t-transparent rounded-full animate-spin" />
+                  <td colSpan={5} className="px-8 py-20 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-8 h-8 text-[#b48222] animate-spin" />
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">
                         Querying Records...
                       </p>
@@ -97,54 +140,63 @@ const AdminOath = () => {
                   </td>
                 </tr>
               ) : (
-                preferences.map((pref) => (
-                  <tr
-                    key={pref._id}
-                    className="hover:bg-slate-50/80 transition-colors group"
-                  >
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      <div className="text-xs font-black text-[#1a3a32] uppercase tracking-tight">
-                        {pref.user?.name}
-                      </div>
-                      <div className="text-[10px] font-medium text-slate-400">
-                        {pref.user?.email}
-                      </div>
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      <span
-                        className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border ${
-                          pref.ceremonyChoice === "oath"
-                            ? "bg-[#b48222]/5 text-[#b48222] border-[#b48222]/20"
-                            : "bg-[#1a3a32]/5 text-[#1a3a32] border-[#1a3a32]/20"
-                        }`}
-                      >
-                        {pref.ceremonyChoice}
-                      </span>
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap">
-                      <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                        {pref.religiousText || (
-                          <span className="text-slate-200 italic font-normal">
-                            N/A (Affirmation)
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-[10px] font-bold text-slate-400 uppercase">
-                      {new Date(pref.updatedAt).toLocaleDateString(undefined, {
-                        dateStyle: "medium",
-                      })}
-                    </td>
-                    <td className="px-8 py-5 whitespace-nowrap text-right">
-                      <button
-                        onClick={() => handleDelete(pref.user?._id)}
-                        className="text-red-400 hover:text-red-600 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all underline underline-offset-4"
-                      >
-                        Delete Record
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                preferences.map((pref) => {
+                  const isProcessing = deletingId === pref.user?._id;
+                  
+                  return (
+                    <tr
+                      key={pref._id}
+                      className={`hover:bg-slate-50/80 transition-colors group ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <td className="px-8 py-5 whitespace-nowrap">
+                        <div className="text-xs font-black text-[#1a3a32] uppercase tracking-tight">
+                          {pref.user?.name || "Unlinked User"}
+                        </div>
+                        <div className="text-[10px] font-medium text-slate-400">
+                          {pref.user?.email || "No contact data"}
+                        </div>
+                      </td>
+                      <td className="px-8 py-5 whitespace-nowrap">
+                        <span
+                          className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-full border ${
+                            pref.ceremonyChoice === "oath"
+                              ? "bg-[#b48222]/5 text-[#b48222] border-[#b48222]/20"
+                              : "bg-[#1a3a32]/5 text-[#1a3a32] border-[#1a3a32]/20"
+                          }`}
+                        >
+                          {pref.ceremonyChoice}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 whitespace-nowrap">
+                        <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                          {pref.religiousText || (
+                            <span className="text-slate-200 italic font-normal">
+                              N/A (Affirmation)
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-8 py-5 whitespace-nowrap text-[10px] font-bold text-slate-400 uppercase">
+                        {new Date(pref.updatedAt).toLocaleDateString(undefined, {
+                          dateStyle: "medium",
+                        })}
+                      </td>
+                      <td className="px-8 py-5 whitespace-nowrap text-right">
+                        <button
+                          onClick={() => handleDelete(pref.user?._id)}
+                          className="text-red-400 hover:text-red-600 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all flex items-center gap-1 ml-auto underline underline-offset-4"
+                        >
+                          {isProcessing ? (
+                            <Loader2 size={10} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={10} />
+                          )}
+                          {isProcessing ? "Processing..." : "Delete Record"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -154,7 +206,7 @@ const AdminOath = () => {
       {/* Footer Info */}
       <div className="flex justify-center">
         <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em]">
-          Internal Judicial Use Only • Confidential Registry
+          OFFICE OF THE REGISTRAR HIGH COURT
         </p>
       </div>
     </div>

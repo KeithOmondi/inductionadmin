@@ -11,6 +11,10 @@ import eventsReducer from "./slices/eventSlice"
 import userChatReducer from "./slices/userChatSlice"
 import pushReducer from "./slices/pushSlice"
 import swearingPreferenceReducer from "./slices/swearingPreferenceSlice"
+import  gReducer from "./slices/gSlice"
+import guestCourtInfoReducer from "./slices/guests/guestCourtInfoSlice"
+import guestMessagesReducer from "./slices/guests/guestMessagesSlice"
+import userReducer from "./slices/userSlice"
 
 export const store = configureStore({
   reducer: {
@@ -24,7 +28,11 @@ export const store = configureStore({
     events: eventsReducer,
     userChat: userChatReducer,
     push: pushReducer,
-    swearingPreference: swearingPreferenceReducer
+    swearingPreference: swearingPreferenceReducer,
+    g: gReducer,
+    guestCourtInfo: guestCourtInfoReducer,
+    guestMessages: guestMessagesReducer,
+    user: userReducer
     // add other slices here
   },
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { BrowserRouter } from "react-router-dom";
 import { Provider, useDispatch, useSelector } from "react-redux";
 import { Toaster } from "react-hot-toast";
@@ -14,39 +14,26 @@ import { disconnectSocket, initSocket } from "./services/socket";
 
 const AppContent = () => {
   const dispatch = useDispatch<AppDispatch>();
-
-  const [isInitializing, setIsInitializing] = useState(true);
-
   const socketInitialized = useRef(false);
 
   const user = useSelector((state: RootState) => state.auth.user);
 
   /* =====================================================
-     AUTH SESSION RESTORE
+     AUTH SESSION RESTORE (NON BLOCKING)
   ===================================================== */
 
   useEffect(() => {
-    let mounted = true;
+    console.log("[APP] Checking existing session...");
 
-    const initializeAuth = async () => {
-      try {
-        console.log("[APP] Checking existing session...");
+    dispatch(refreshUser())
+      .unwrap()
+      .then(() => {
+        console.log("[APP] Session restored");
+      })
+      .catch(() => {
+        console.log("[APP] No session found");
+      });
 
-        await dispatch(refreshUser()).unwrap();
-
-        console.log("[APP] Session restored successfully");
-      } catch (error) {
-        console.log("[APP] No active session found.");
-      } finally {
-        if (mounted) setIsInitializing(false);
-      }
-    };
-
-    initializeAuth();
-
-    return () => {
-      mounted = false;
-    };
   }, [dispatch]);
 
   /* =====================================================
@@ -55,43 +42,20 @@ const AppContent = () => {
 
   useEffect(() => {
     if (!user?._id) {
-      console.log("[SOCKET] No user logged in");
-
       disconnectSocket();
-
       socketInitialized.current = false;
-
       return;
     }
 
     if (socketInitialized.current) return;
 
-    console.log("[SOCKET] Connecting for user:", user._id);
+    console.log("[SOCKET] Connecting:", user._id);
 
     initSocket(user._id);
 
     socketInitialized.current = true;
+
   }, [user]);
-
-  /* =====================================================
-     LOADING SCREEN
-  ===================================================== */
-
-  if (isInitializing) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-
-          <div className="w-12 h-12 border-4 border-[#355E3B] border-t-transparent rounded-full animate-spin" />
-
-          <p className="text-slate-500 font-serif italic animate-pulse">
-            Office of the Registrar High Court...
-          </p>
-
-        </div>
-      </div>
-    );
-  }
 
   return <AppRoutes />;
 };
