@@ -63,7 +63,7 @@ const AdminOath = () => {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-xl font-black text-[#1a3a32] uppercase tracking-tighter">
-            Oath & Affirmation Registry
+            Oath & Affirmation List
           </h2>
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">
             Institutional Preference Management

@@ -132,8 +132,8 @@ const AdminEventsPage = () => {
       {/* 1. HEADER & SEARCH */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-slate-100 pb-10">
         <div className="space-y-1">
-          <h1 className="text-[#355E3B] font-serif text-4xl font-black tracking-tight">Judicial Registry</h1>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Protocol & Scheduling Management</p>
+          <h1 className="text-[#355E3B] font-serif text-4xl font-black tracking-tight">Events</h1>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Events scheduling and Management</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
