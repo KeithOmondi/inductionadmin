@@ -19,21 +19,11 @@ const AppContent = () => {
   const user = useSelector((state: RootState) => state.auth.user);
 
   /* =====================================================
-     AUTH SESSION RESTORE (NON BLOCKING)
+     AUTH SESSION RESTORE (COOKIE BASED)
   ===================================================== */
 
   useEffect(() => {
-    console.log("[APP] Checking existing session...");
-
-    dispatch(refreshUser())
-      .unwrap()
-      .then(() => {
-        console.log("[APP] Session restored");
-      })
-      .catch(() => {
-        console.log("[APP] No session found");
-      });
-
+    dispatch(refreshUser()).unwrap().catch(() => {});
   }, [dispatch]);
 
   /* =====================================================
@@ -49,10 +39,7 @@ const AppContent = () => {
 
     if (socketInitialized.current) return;
 
-    console.log("[SOCKET] Connecting:", user._id);
-
     initSocket(user._id);
-
     socketInitialized.current = true;
 
   }, [user]);

@@ -1,4 +1,9 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import {
+  createSlice,
+  createAsyncThunk,
+  type PayloadAction,
+  type Action,
+} from "@reduxjs/toolkit";
 import { api } from "../../api/axios";
 
 /* ================= TYPES ================= */
@@ -6,16 +11,14 @@ import { api } from "../../api/axios";
 export type EventFilter = "UPCOMING" | "PAST" | "RECENT" | "ALL";
 export type EventStatus = "SCHEDULED" | "ONGOING" | "COMPLETED" | "CANCELLED";
 
-/* ================= EVENT INTERFACE ================= */
-
 export interface IEvent {
   _id: string;
   title: string;
   description: string;
   location: string;
-  date: string;         // ISO string (Date only)
-  time: string;         // e.g., "14:30"
-  scheduledAt: string;  // ISO string (Combined Date + Time for countdown)
+  date: string;
+  time: string;
+  scheduledAt: string;
   status: EventStatus;
   isMandatory: boolean;
   capacity?: number;
@@ -38,7 +41,6 @@ const initialState: EventState = {
 
 /* ================= THUNKS ================= */
 
-// Fetch events with filter
 export const fetchEvents = createAsyncThunk(
   "events/fetchAll",
   async (params: { filter?: EventFilter } | undefined, thunkAPI) => {
@@ -49,12 +51,13 @@ export const fetchEvents = createAsyncThunk(
       });
       return data;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to fetch events");
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to fetch events",
+      );
     }
-  }
+  },
 );
 
-// Fetch single event
 export const fetchEventById = createAsyncThunk(
   "events/fetchOne",
   async (id: string, thunkAPI) => {
@@ -64,44 +67,62 @@ export const fetchEventById = createAsyncThunk(
       });
       return data;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to fetch event");
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to fetch event",
+      );
     }
-  }
+  },
 );
 
-// Create event (admin)
+export const fetchPublicEvents = createAsyncThunk(
+  "events/fetchPublic",
+  async (params: { filter?: EventFilter } | undefined, thunkAPI) => {
+    try {
+      const { data } = await api.get(`/events/public`, { params });
+      return data;
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Public fetch failed",
+      );
+    }
+  },
+);
+
+export const fetchPublicEventById = createAsyncThunk(
+  "events/fetchPublicOne",
+  async (id: string, thunkAPI) => {
+    try {
+      const { data } = await api.get(`/events/public/${id}`);
+      return data;
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Public detail fetch failed",
+      );
+    }
+  },
+);
+
 export const createEvent = createAsyncThunk(
   "events/create",
-  async (
-    formData: {
-      title: string;
-      description: string;
-      location: string;
-      date: string;
-      time: string;
-      isMandatory: boolean;
-      capacity?: number;
-      status?: EventStatus;
-    },
-    thunkAPI
-  ) => {
+  async (formData: Partial<IEvent>, thunkAPI) => {
     try {
       const { data } = await api.post("/events/create", formData, {
         withCredentials: true,
       });
       return data;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message || "Creation failed");
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Creation failed",
+      );
     }
-  }
+  },
 );
 
-// Update event (admin)
 export const updateEvent = createAsyncThunk(
   "events/update",
   async (
     { id, formData }: { id: string; formData: Partial<IEvent> },
-    thunkAPI
+    thunkAPI,
   ) => {
     try {
       const { data } = await api.put(`/events/update/${id}`, formData, {
@@ -109,24 +130,25 @@ export const updateEvent = createAsyncThunk(
       });
       return data;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message || "Update failed");
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Update failed",
+      );
     }
-  }
+  },
 );
 
-// Delete event (admin)
 export const deleteEvent = createAsyncThunk(
   "events/delete",
   async (id: string, thunkAPI) => {
     try {
-      await api.delete(`/events/delete/${id}`, {
-        withCredentials: true,
-      });
+      await api.delete(`/events/delete/${id}`, { withCredentials: true });
       return id;
     } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data?.message || "Deletion failed");
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Deletion failed",
+      );
     }
-  }
+  },
 );
 
 /* ================= SLICE ================= */
@@ -135,55 +157,83 @@ const eventSlice = createSlice({
   name: "events",
   initialState,
   reducers: {
-    // Helpful for clearing error state on navigation
     clearEventError: (state) => {
       state.error = undefined;
+    },
+    clearSingleEvent: (state) => {
+      state.event = undefined;
     },
   },
   extraReducers: (builder) => {
     builder
-      /* FETCH ALL */
-      .addCase(fetchEvents.pending, (state) => {
-        state.loading = true;
-        state.error = undefined;
-      })
-      .addCase(fetchEvents.fulfilled, (state, action) => {
-        state.loading = false;
-        state.events = action.payload;
-      })
-      .addCase(fetchEvents.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
+      // Standard Cases first (Easier for TS to infer)
+      .addCase(
+        createEvent.fulfilled,
+        (state, action: PayloadAction<IEvent>) => {
+          state.loading = false;
+          state.events.unshift(action.payload);
+        },
+      )
+      .addCase(
+        updateEvent.fulfilled,
+        (state, action: PayloadAction<IEvent>) => {
+          state.loading = false;
+          state.events = state.events.map((e) =>
+            e._id === action.payload._id ? action.payload : e,
+          );
+          if (state.event?._id === action.payload._id)
+            state.event = action.payload;
+        },
+      )
+      .addCase(
+        deleteEvent.fulfilled,
+        (state, action: PayloadAction<string>) => {
+          state.loading = false;
+          state.events = state.events.filter((e) => e._id !== action.payload);
+        },
+      )
 
-      /* FETCH ONE */
-      .addCase(fetchEventById.fulfilled, (state, action) => {
-        state.event = action.payload;
-      })
-
-      /* CREATE */
-      .addCase(createEvent.fulfilled, (state, action) => {
-        // Unshift adds to the top of the list
-        state.events.unshift(action.payload);
-      })
-
-      /* UPDATE */
-      .addCase(updateEvent.fulfilled, (state, action) => {
-        state.events = state.events.map((e) =>
-          e._id === action.payload._id ? action.payload : e
-        );
-        // Also update the single event state if it's the one being edited
-        if (state.event?._id === action.payload._id) {
+      // Matchers for Shared Logic
+      .addMatcher(
+        (action: Action): action is Action & { type: string } =>
+          action.type.endsWith("/pending"),
+        (state) => {
+          state.loading = true;
+          state.error = undefined;
+        },
+      )
+      .addMatcher(
+        (action: Action): action is PayloadAction<string> =>
+          action.type.endsWith("/rejected"),
+        (state, action) => {
+          state.loading = false;
+          state.error = action.payload || "An unexpected error occurred";
+        },
+      )
+      .addMatcher(
+        (action: Action): action is PayloadAction<IEvent[]> =>
+          [
+            fetchEvents.fulfilled.type,
+            fetchPublicEvents.fulfilled.type,
+          ].includes(action.type),
+        (state, action) => {
+          state.loading = false;
+          state.events = action.payload;
+        },
+      )
+      .addMatcher(
+        (action: Action): action is PayloadAction<IEvent> =>
+          [
+            fetchEventById.fulfilled.type,
+            fetchPublicEventById.fulfilled.type,
+          ].includes(action.type),
+        (state, action) => {
+          state.loading = false;
           state.event = action.payload;
-        }
-      })
-
-      /* DELETE */
-      .addCase(deleteEvent.fulfilled, (state, action) => {
-        state.events = state.events.filter((e) => e._id !== action.payload);
-      });
+        },
+      );
   },
 });
 
-export const { clearEventError } = eventSlice.actions;
+export const { clearEventError, clearSingleEvent } = eventSlice.actions;
 export default eventSlice.reducer;

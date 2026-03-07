@@ -157,7 +157,7 @@ const AdminGuestList: React.FC = () => {
                       <td className="px-8 py-6">
                         <div className="flex items-baseline gap-1">
                           <span className="text-base font-bold text-slate-700">{list.guests?.length || 0}</span>
-                          <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">Guests</span>
+                          <span className="text-[10px] text-slate-400 font-black uppercase tracking-tighter">Guests List</span>
                         </div>
                       </td>
                       <td className="px-8 py-6">

@@ -1,4 +1,9 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  createSlice,
+  createAsyncThunk,
+  type PayloadAction,
+  type Action,
+} from "@reduxjs/toolkit";
 import { api } from "../../api/axios";
 
 // ==========================
@@ -14,14 +19,14 @@ export interface User {
 export interface Message {
   _id: string;
   sender: User | string;
-  receiver?: User | string;
+  receiver?: User | string; // Can be null for broadcasts
   group?: string;
   text?: string;
   imageUrl?: string;
-  senderType: "admin" | "user" | "guest";
-  isBroadcast?: boolean; 
+  senderType: "admin" | "judge" | "guest";
+  isBroadcast?: boolean;
   readBy: string[];
-  deliveryStatus: "sent" | "delivered" | "read";
+  status: "sent" | "delivered" | "read";
   isEdited?: boolean;
   isDeleted?: boolean;
   createdAt: string;
@@ -31,9 +36,8 @@ export interface Group {
   _id: string;
   name: string;
   description?: string;
-  members: User[];
+  members: User[] | string[];
   createdBy: string;
-  adminId?: string;
   isActive: boolean;
   createdAt: string;
   isReadOnly?: boolean;
@@ -48,9 +52,6 @@ interface UserChatState {
   error?: string;
 }
 
-// ==========================
-// Initial State
-// ==========================
 const initialState: UserChatState = {
   chatMessages: [],
   groups: [],
@@ -63,58 +64,65 @@ const initialState: UserChatState = {
 // Async Thunks
 // ==========================
 
-/**
- * Fetches messages for users.
- * Ensure isBroadcast is passed as a boolean or string correctly.
- */
 export const fetchUserMessages = createAsyncThunk<
-  Message[], 
+  Message[],
   { receiver?: string; group?: string; isBroadcast?: boolean }
->(
-  "userChat/fetchUserMessages",
-  async (params, { rejectWithValue }) => {
+>("userChat/fetchUserMessages", async (params, { rejectWithValue }) => {
+  try {
+    const { data } = await api.get("/chat/messages", { params });
+    return data;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Failed to fetch messages",
+    );
+  }
+});
+
+export const fetchGuestMessages = createAsyncThunk<
+  Message[],
+  { isBroadcast?: boolean }
+>("userChat/fetchGuestMessages", async (params, { rejectWithValue }) => {
+  try {
+    const { data } = await api.get("/chat/guest/messages", { params });
+    return data;
+  } catch (err: any) {
+    return rejectWithValue(
+      err.response?.data?.message || "Failed to fetch guest messages",
+    );
+  }
+});
+
+export const fetchGuestChannels = createAsyncThunk<Group[]>(
+  "userChat/fetchGuestChannels",
+  async (_, { rejectWithValue }) => {
     try {
-      // Axios handles params object and converts { isBroadcast: true } to ?isBroadcast=true
-      const { data } = await api.get("/chat/messages", { params });
+      const { data } = await api.get("/chat/guest/channels");
       return data;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch channels",
+      );
     }
-  }
+  },
 );
 
-/**
- * Sends messages for users.
- */
 export const sendUserMessage = createAsyncThunk<
-  Message, 
-  { receiver?: string; group?: string; text?: string; image?: File; isBroadcast?: boolean }
->(
-  "userChat/sendUserMessage",
-  async (payload, { rejectWithValue }) => {
-    try {
-      const formData = new FormData();
-      
-      // Only append if values exist to avoid sending "undefined" as a string
-      if (payload.receiver) formData.append("receiver", payload.receiver);
-      if (payload.group) formData.append("group", payload.group);
-      if (payload.text) formData.append("text", payload.text);
-      if (payload.image) formData.append("image", payload.image);
-      
-      // Explicitly convert boolean to string for multipart/form-data
-      if (payload.isBroadcast !== undefined) {
-        formData.append("isBroadcast", String(payload.isBroadcast));
-      }
+  Message,
+  { receiver?: string; group?: string; text?: string; image?: File }
+>("userChat/sendUserMessage", async (payload, { rejectWithValue }) => {
+  try {
+    const formData = new FormData();
+    if (payload.receiver) formData.append("receiver", payload.receiver);
+    if (payload.group) formData.append("group", payload.group);
+    if (payload.text) formData.append("text", payload.text);
+    if (payload.image) formData.append("image", payload.image);
 
-      const { data } = await api.post("/chat/messages", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      return data;
-    } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
-    }
+    const { data } = await api.post("/chat/messages", formData);
+    return data;
+  } catch (err: any) {
+    return rejectWithValue(err.response?.data?.message || "Send failed");
   }
-);
+});
 
 export const fetchUserGroups = createAsyncThunk<Group[]>(
   "userChat/fetchUserGroups",
@@ -123,9 +131,11 @@ export const fetchUserGroups = createAsyncThunk<Group[]>(
       const { data } = await api.get("/chat/my-groups");
       return data;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || err.message);
+      return rejectWithValue(
+        err.response?.data?.message || "Groups fetch failed",
+      );
     }
-  }
+  },
 );
 
 // ==========================
@@ -135,62 +145,87 @@ const userChatSlice = createSlice({
   name: "userChat",
   initialState,
   reducers: {
-    clearError(state) {
-      state.error = undefined;
+    receiveMessage(state, action: PayloadAction<Message>) {
+      // Defensive Check: Ensure payload exists and has an ID
+      if (!action.payload?._id) return;
+
+      // Safe Find: Use optional chaining to prevent crash if a previous message is malformed
+      const exists = state.chatMessages.find(
+        (m) => m?._id === action.payload._id,
+      );
+
+      if (!exists) {
+        state.chatMessages.push(action.payload);
+
+        // Logical Check: Increment unread count
+        state.unreadCount += 1;
+      }
     },
     resetChatMessages(state) {
       state.chatMessages = [];
       state.unreadCount = 0;
+      state.error = undefined;
     },
     clearUnreadCount(state) {
       state.unreadCount = 0;
     },
-    receiveMessage(state, action: PayloadAction<Message>) {
-      const exists = state.chatMessages.find((m) => m._id === action.payload._id);
-      if (!exists) {
-        state.chatMessages.push(action.payload);
-      }
-    },
-    updateSocketMessage(state, action: PayloadAction<Message>) {
-      const index = state.chatMessages.findIndex((m) => m._id === action.payload._id);
-      if (index !== -1) {
-        state.chatMessages[index] = action.payload;
-      }
-    },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchUserMessages.pending, (state) => {
-        state.loading = true;
-        state.error = undefined;
-      })
       .addCase(fetchUserMessages.fulfilled, (state, action) => {
-        state.loading = false;
-        // The backend should return the filtered array (Broadcasts OR Private)
-        state.chatMessages = action.payload;
+        // Safe Assignment: Ensure we always have an array
+        state.chatMessages = Array.isArray(action.payload)
+          ? action.payload
+          : [];
       })
-      .addCase(fetchUserMessages.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
+      .addCase(fetchGuestMessages.fulfilled, (state, action) => {
+        state.chatMessages = Array.isArray(action.payload)
+          ? action.payload
+          : [];
       })
       .addCase(fetchUserGroups.fulfilled, (state, action) => {
         state.groups = action.payload;
       })
+      .addCase(fetchGuestChannels.fulfilled, (state, action) => {
+        state.groups = action.payload;
+      })
       .addCase(sendUserMessage.fulfilled, (state, action) => {
-        const exists = state.chatMessages.find((m) => m._id === action.payload._id);
-        if (!exists) {
+        // Defensive: Only push if the returned message is valid
+        if (action.payload?._id) {
           state.chatMessages.push(action.payload);
         }
-      });
+      })
+      /* Matchers for Loading/Error States */
+      .addMatcher(
+        (action: Action): action is Action => action.type.endsWith("/pending"),
+        (state) => {
+          state.loading = true;
+          state.error = undefined;
+        },
+      )
+      .addMatcher(
+        (action: Action): action is PayloadAction<string> =>
+          action.type.endsWith("/rejected"),
+        (state, action) => {
+          state.loading = false;
+          // Ensure error is a string to prevent "Object not valid as React child"
+          state.error =
+            typeof action.payload === "string"
+              ? action.payload
+              : "An unexpected error occurred";
+        },
+      )
+      .addMatcher(
+        (action: Action): action is Action =>
+          action.type.endsWith("/fulfilled"),
+        (state) => {
+          state.loading = false;
+        },
+      );
   },
 });
 
-export const {
-  clearError,
-  resetChatMessages,
-  clearUnreadCount,
-  receiveMessage,
-  updateSocketMessage,
-} = userChatSlice.actions;
+export const { receiveMessage, resetChatMessages, clearUnreadCount } =
+  userChatSlice.actions;
 
 export default userChatSlice.reducer;

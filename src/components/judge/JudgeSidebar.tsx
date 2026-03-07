@@ -110,6 +110,7 @@ const JudgeSidebar = () => {
           <NavItem icon={MessageSquare} label="Messages" to="/judge/messages" onClick={() => setIsOpen(false)} />
           <NavItem icon={BellRing} label="Notice Board" to="/judge/notices" onClick={() => setIsOpen(false)} />
           <NavItem icon={Calendar} label="Events" to="/judge/events" onClick={() => setIsOpen(false)} />
+          <NavItem icon={Calendar} label="Gallary" to="/judge/gallary" onClick={() => setIsOpen(false)} />
         </div>
 
        

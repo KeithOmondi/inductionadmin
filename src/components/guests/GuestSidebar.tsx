@@ -108,6 +108,7 @@ const GuestSidebar = () => {
           </p>
           <NavItem icon={Calendar} label="Notice Board" to="/guest/notices" onClick={() => setIsOpen(false)} />
           <NavItem icon={FileText} label="Events" to="/guest/event" onClick={() => setIsOpen(false)} />
+          <NavItem icon={FileText} label="Gallary" to="/guest/gallary" onClick={() => setIsOpen(false)} />
         </div>
 
         {/* Help/FAQ Footer */}

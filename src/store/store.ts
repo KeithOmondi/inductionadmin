@@ -14,7 +14,7 @@ import swearingPreferenceReducer from "./slices/swearingPreferenceSlice"
 import  gReducer from "./slices/gSlice"
 import guestCourtInfoReducer from "./slices/guests/guestCourtInfoSlice"
 import guestMessagesReducer from "./slices/guests/guestMessagesSlice"
-import userReducer from "./slices/userSlice"
+import galleryReducer from "./slices/gallerySlice"
 
 export const store = configureStore({
   reducer: {
@@ -32,7 +32,7 @@ export const store = configureStore({
     g: gReducer,
     guestCourtInfo: guestCourtInfoReducer,
     guestMessages: guestMessagesReducer,
-    user: userReducer
+    gallery: galleryReducer
     // add other slices here
   },
 });

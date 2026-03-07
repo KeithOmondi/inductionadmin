@@ -11,6 +11,7 @@ import {
   X,
   ShieldCheck,
   User,
+  GalleryThumbnails,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../../store/store";
@@ -177,6 +178,17 @@ const AdminSidebar: React.FC = () => {
             >
               <Users size={18} />
               Events
+            </NavLink>
+
+            <NavLink
+              to="/admin/gallary"
+              onClick={() => setIsOpen(false)}
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? activeClass : inactiveClass}`
+              }
+            >
+              <GalleryThumbnails size={18} />
+              Gallary
             </NavLink>
 
             <NavLink

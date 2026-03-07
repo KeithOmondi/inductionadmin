@@ -21,9 +21,7 @@ import type { Message } from "../../store/slices/userChatSlice";
 const JudgeMessagePage = () => {
   const dispatch = useAppDispatch();
   const userId = useAppSelector((state) => state.auth.user?._id);
-  const { chatMessages, groups } = useAppSelector(
-    (state) => state.userChat
-  );
+  const { chatMessages, groups } = useAppSelector((state) => state.userChat);
 
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState("");
@@ -33,9 +31,7 @@ const JudgeMessagePage = () => {
   /* ================= DISPLAY NAME NORMALIZER ================= */
   const getDisplayName = (name?: string) => {
     if (!name) return "ORHC Team";
-
     const lower = name.toLowerCase();
-
     if (
       lower.includes("registry") ||
       lower.includes("orh team") ||
@@ -45,7 +41,6 @@ const JudgeMessagePage = () => {
     ) {
       return "ORHC Team";
     }
-
     return name;
   };
 
@@ -59,15 +54,18 @@ const JudgeMessagePage = () => {
     }
 
     const handleNewMessage = (msg: Message) => {
-      const senderId =
-        typeof msg.sender === "string"
-          ? msg.sender
-          : msg.sender?._id;
+      // Defensive ID extraction
+      const msgSenderId =
+        typeof msg.sender === "string" ? msg.sender : msg.sender?._id;
+      const msgReceiverId =
+        typeof msg.receiver === "string" ? msg.receiver : msg.receiver?._id;
 
+      // Check if message belongs in current view
       const isCurrentChat =
         msg.group === activeChatId ||
-        senderId === activeChatId ||
-        msg.isBroadcast;
+        msgSenderId === activeChatId ||
+        msgReceiverId === userId || // Message sent to me
+        (activeChat?.type === "broadcast" && msg.isBroadcast);
 
       if (isCurrentChat) {
         dispatch(receiveMessage(msg));
@@ -81,39 +79,38 @@ const JudgeMessagePage = () => {
       socket.off("message:new", handleNewMessage);
       socket.off("message:broadcast", handleNewMessage);
     };
-  }, [activeChatId, dispatch]);
+  }, [activeChatId, dispatch, userId]);
 
   /* ================= DATA FETCHING ================= */
   useEffect(() => {
     dispatch(fetchUserGroups());
   }, [dispatch]);
 
+  const activeChat = useMemo(
+    () => groups.find((g) => g._id === activeChatId),
+    [groups, activeChatId],
+  );
+
   useEffect(() => {
     if (!activeChatId) return;
 
-    const selected = groups.find((g) => g._id === activeChatId);
     dispatch(resetChatMessages());
 
-    if (selected?.type === "broadcast") {
+    if (activeChat?.type === "broadcast") {
       dispatch(fetchUserMessages({ isBroadcast: true }));
-    } else if (selected?.type === "private") {
+    } else if (activeChat?.type === "private") {
       dispatch(fetchUserMessages({ receiver: activeChatId }));
     } else {
       dispatch(fetchUserMessages({ group: activeChatId }));
     }
 
     setMobileView("chat");
-  }, [activeChatId, dispatch, groups]);
+  }, [activeChatId, dispatch, activeChat?.type]);
 
   /* ================= UTILITIES ================= */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
-
-  const activeChat = useMemo(
-    () => groups.find((g) => g._id === activeChatId),
-    [groups, activeChatId]
-  );
 
   const isReplyDisabled =
     activeChat?.isReadOnly || activeChat?.type === "broadcast";
@@ -189,19 +186,22 @@ const JudgeMessagePage = () => {
                     : "hover:bg-slate-50 text-slate-600"
                 }`}
               >
-                <div className="p-2.5 rounded-lg bg-slate-100">
+                <div
+                  className={`p-2.5 rounded-lg ${activeChatId === group._id ? "bg-white/10" : "bg-slate-100"}`}
+                >
                   {group.type === "private" ? (
                     <UserCircle size={22} />
                   ) : (
                     <Megaphone size={22} />
                   )}
                 </div>
-
                 <div className="flex flex-col items-start overflow-hidden text-left">
                   <span className="font-bold text-sm truncate w-full">
                     {getDisplayName(group.name)}
                   </span>
-                  <span className="text-[10px] uppercase text-slate-400">
+                  <span
+                    className={`text-[10px] uppercase ${activeChatId === group._id ? "text-white/60" : "text-slate-400"}`}
+                  >
                     {group.type === "broadcast"
                       ? "ORHC Broadcast"
                       : "Authenticated Thread"}
@@ -216,49 +216,63 @@ const JudgeMessagePage = () => {
         <section className="flex-1 flex flex-col bg-[#F8F9FA] relative">
           {activeChat ? (
             <>
-              {/* HEADER */}
-              <div className="px-6 py-4 border-b bg-white">
-                <h2 className="font-serif font-bold text-[#355E3B] text-lg">
-                  {getDisplayName(activeChat.name)}
-                </h2>
+              <div className="px-6 py-4 border-b bg-white flex items-center justify-between">
+                <div>
+                  <h2 className="font-serif font-bold text-[#355E3B] text-lg">
+                    {getDisplayName(activeChat.name)}
+                  </h2>
+                  {activeChat.type === "broadcast" && (
+                    <span className="text-[9px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold uppercase">
+                      Official Announcement Channel
+                    </span>
+                  )}
+                </div>
+                <button
+                  className="md:hidden text-slate-400"
+                  onClick={() => setMobileView("list")}
+                >
+                  Back
+                </button>
               </div>
 
-              {/* MESSAGES */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {chatMessages.map((msg) => {
-                  const senderObj =
-                    typeof msg.sender === "string"
-                      ? null
-                      : msg.sender;
-
+                  const senderName =
+                    typeof msg.sender === "string" ? "User" : msg.sender?.name;
                   const senderId =
                     typeof msg.sender === "string"
                       ? msg.sender
                       : msg.sender?._id;
-
                   const isOutgoing = senderId === userId;
 
                   return (
                     <div
                       key={msg._id}
-                      className={`flex flex-col ${
-                        isOutgoing ? "items-end" : "items-start"
-                      }`}
+                      className={`flex flex-col ${isOutgoing ? "items-end" : "items-start"}`}
                     >
                       {!isOutgoing && (
                         <span className="text-[10px] font-bold text-[#355E3B] mb-1 ml-2 uppercase">
-                          {getDisplayName(senderObj?.name)}
+                          {getDisplayName(senderName)}
                         </span>
                       )}
-
                       <div
-                        className={`max-w-[80%] p-4 ${
+                        className={`max-w-[80%] p-4 shadow-sm ${
                           isOutgoing
-                            ? "bg-white text-slate-800"
+                            ? "bg-white text-slate-800 border border-slate-200"
                             : "bg-[#355E3B] text-white"
-                        } rounded-2xl`}
+                        } rounded-2xl ${isOutgoing ? "rounded-tr-none" : "rounded-tl-none"}`}
                       >
-                        <p className="text-sm">{msg.text}</p>
+                        <p className="text-sm whitespace-pre-wrap">
+                          {msg.text}
+                        </p>
+                        <span
+                          className={`text-[9px] mt-2 block opacity-50 ${isOutgoing ? "text-right" : "text-left"}`}
+                        >
+                          {new Date(msg.createdAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       </div>
                     </div>
                   );
@@ -266,17 +280,22 @@ const JudgeMessagePage = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* INPUT */}
               <div className="p-6 bg-white border-t">
-                {!isReplyDisabled && (
+                {isReplyDisabled ? (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                    <p className="text-xs text-slate-500 font-medium italic">
+                      This is a read-only official channel. You cannot reply to
+                      broadcasts.
+                    </p>
+                  </div>
+                ) : (
                   <div className="flex gap-4">
                     <textarea
                       value={messageInput}
-                      onChange={(e) =>
-                        setMessageInput(e.target.value)
-                      }
-                      className="flex-1 border rounded-xl p-3"
-                      placeholder="Enter official message..."
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      className="flex-1 border border-slate-200 rounded-xl p-3 text-sm focus:ring-2 ring-[#355E3B]/10 outline-none resize-none"
+                      placeholder="Type your message..."
+                      rows={1}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
@@ -286,7 +305,8 @@ const JudgeMessagePage = () => {
                     />
                     <button
                       onClick={handleSendMessage}
-                      className="bg-[#355E3B] text-white p-4 rounded-xl"
+                      disabled={!messageInput.trim()}
+                      className="bg-[#355E3B] text-white p-4 rounded-xl hover:bg-[#2a4b2f] disabled:opacity-50 transition-colors"
                     >
                       <Send size={20} />
                     </button>
@@ -295,8 +315,13 @@ const JudgeMessagePage = () => {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-slate-400">
-              Select a conversation
+            <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4">
+              <div className="p-6 bg-slate-100 rounded-full">
+                <Scale size={48} className="opacity-20" />
+              </div>
+              <p className="font-medium">
+                Select a secure thread to begin correspondence
+              </p>
             </div>
           )}
         </section>

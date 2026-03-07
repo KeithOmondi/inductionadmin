@@ -44,9 +44,9 @@ export interface Group {
 }
 
 interface AdminChatState {
-  messages: Message[];      // Global message history/logs
-  chatMessages: Message[];  // Active conversation messages
-  unreadCount: number;      // Tracking unread incoming messages
+  messages: Message[];
+  chatMessages: Message[];
+  unreadCount: number;
   groups: Group[];
   stats: Record<string, any>;
   loading: boolean;
@@ -56,9 +56,6 @@ interface AdminChatState {
   pages: number;
 }
 
-// ==========================
-// Initial State
-// ==========================
 const initialState: AdminChatState = {
   messages: [],
   chatMessages: [],
@@ -76,9 +73,6 @@ const initialState: AdminChatState = {
 // Async Thunks
 // ==========================
 
-/**
- * Fetch global message registry (for logs/stats)
- */
 export const fetchAllMessages = createAsyncThunk<
   { messages: Message[]; total: number; page: number; pages: number },
   { page?: number; limit?: number; senderType?: string; isDeleted?: boolean }
@@ -91,17 +85,9 @@ export const fetchAllMessages = createAsyncThunk<
   }
 });
 
-/**
- * Fetch messages for a specific interaction (Private or Broadcast)
- */
 export const fetchChatMessages = createAsyncThunk<
   { messages: Message[]; total: number; page: number; pages: number },
-  { 
-    receiverId?: string; 
-    isBroadcast?: boolean; 
-    page?: number; 
-    limit?: number 
-  }
+  { receiverId?: string; isBroadcast?: boolean; page?: number; limit?: number }
 >("adminChat/fetchChatMessages", async (params, { rejectWithValue }) => {
   try {
     const { data } = await api.get("/chat/chat/messages", { params });
@@ -111,25 +97,41 @@ export const fetchChatMessages = createAsyncThunk<
   }
 });
 
-/**
- * Send a message (Handles Direct and Broadcast)
- */
 export const sendMessage = createAsyncThunk<
-  Message,
-  { receiver?: string; text?: string; image?: File; isBroadcast?: boolean }
+  Message | Message[],
+  {
+    receivers?: string[];
+    receiver?: string;
+    text?: string;
+    image?: File;
+    isBroadcast?: boolean;
+    groupId?: string; // Add this if you use groups
+  }
 >("adminChat/sendMessage", async (payload, { rejectWithValue }) => {
   try {
     const formData = new FormData();
 
-    if (!payload.isBroadcast && payload.receiver) {
-      formData.append("receiver", payload.receiver);
-    }
-    
-    if (payload.text) formData.append("text", payload.text);
+    // 1. Always append text (Backend requires it)
+    formData.append("text", payload.text || "");
     if (payload.image) formData.append("image", payload.image);
-    
-    if (payload.isBroadcast !== undefined) {
-      formData.append("isBroadcast", String(payload.isBroadcast));
+
+    // 2. Explicit Destination Routing
+    if (payload.isBroadcast === true) {
+      formData.append("isBroadcast", "true");
+    } 
+    else if (payload.groupId) {
+      formData.append("group", payload.groupId);
+    }
+    else if (payload.receivers && payload.receivers.length > 0) {
+      // For Multi-select: Append each ID to the same key 'receivers'
+      payload.receivers.forEach(id => formData.append("receivers", id));
+    } 
+    else if (payload.receiver) {
+      // For Single-select: Backend now accepts 'receiver' directly
+      formData.append("receiver", payload.receiver);
+    } else {
+      // If none of the above are met, the backend WILL throw "No valid destination"
+      return rejectWithValue("No recipient selected.");
     }
 
     const { data } = await api.post("/chat/admin/send", formData, {
@@ -137,7 +139,8 @@ export const sendMessage = createAsyncThunk<
     });
     return data;
   } catch (err: any) {
-    return rejectWithValue(err.response?.data?.message || err.message);
+    // Return the specific error from the backend (like "No Admin found")
+    return rejectWithValue(err.response?.data?.message || "Destination Error");
   }
 });
 
@@ -149,6 +152,19 @@ export const fetchStats = createAsyncThunk<Record<string, any>>(
       return data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || err.message);
+    }
+  },
+);
+
+export const fetchActiveConversations = createAsyncThunk(
+  "userChat/fetchActiveConversations",
+  async (_, { rejectWithValue }) => {
+    try {
+      // Ensure this matches your route prefix (usually /chat)
+      const { data } = await api.get("/chat/conversations/active"); 
+      return data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || "Failed");
     }
   }
 );
@@ -166,30 +182,25 @@ const adminChatSlice = createSlice({
     resetChatMessages(state) {
       state.chatMessages = [];
     },
-    /**
-     * Resets the notification badge count
-     */
     clearUnreadCount(state) {
       state.unreadCount = 0;
     },
-    /**
-     * Real-time socket update handler.
-     * Logic: Only increment unreadCount if the message is from a user/judge.
-     */
     receiveMessage(state, action: PayloadAction<Message>) {
+      // DEFENSIVE: Ensure payload and _id exist to prevent "reading _id of null"
+      if (!action.payload?._id) return;
+
       const exists = state.chatMessages.find(
-        (m) => m._id === action.payload._id
+        (m) => m?._id === action.payload._id
       );
 
       if (!exists) {
         state.chatMessages.push(action.payload);
         
-        // Notification Logic
+        // Only increment unread if from external users
         if (action.payload.senderType !== "admin") {
           state.unreadCount += 1;
         }
 
-        // Global Logging Logic
         if (action.payload.isBroadcast) {
           state.messages.unshift(action.payload);
         }
@@ -205,10 +216,6 @@ const adminChatSlice = createSlice({
         state.page = action.payload.page;
         state.pages = action.payload.pages;
       })
-      .addCase(fetchChatMessages.pending, (state) => {
-        state.loading = true;
-        state.error = undefined;
-      })
       .addCase(fetchChatMessages.fulfilled, (state, action) => {
         state.loading = false;
         state.chatMessages = action.payload.messages;
@@ -216,19 +223,23 @@ const adminChatSlice = createSlice({
         state.page = action.payload.page;
         state.pages = action.payload.pages;
       })
-      .addCase(fetchChatMessages.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
       .addCase(sendMessage.pending, (state) => {
         state.loading = true;
+        state.error = undefined;
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         state.loading = false;
-        const exists = state.chatMessages.find(
-          (m) => m._id === action.payload._id
-        );
-        if (!exists) state.chatMessages.push(action.payload);
+        
+        // Normalize: Backend might return 1 object or an array of objects
+        const newMessages = Array.isArray(action.payload)
+          ? action.payload
+          : [action.payload];
+
+        newMessages.forEach((msg) => {
+          if (!msg?._id) return; // Skip if malformed
+          const exists = state.chatMessages.find((m) => m?._id === msg._id);
+          if (!exists) state.chatMessages.push(msg);
+        });
       })
       .addCase(sendMessage.rejected, (state, action) => {
         state.loading = false;
@@ -240,11 +251,11 @@ const adminChatSlice = createSlice({
   },
 });
 
-export const { 
-  clearError, 
-  resetChatMessages, 
-  receiveMessage, 
-  clearUnreadCount 
+export const {
+  clearError,
+  resetChatMessages,
+  receiveMessage,
+  clearUnreadCount,
 } = adminChatSlice.actions;
 
 export default adminChatSlice.reducer;
