@@ -1,5 +1,5 @@
 // src/pages/guests/GuestCourtInfoPage.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   ChevronDown,
   Phone,
@@ -9,6 +9,7 @@ import {
   X,
   Scale,
   ExternalLink,
+  RefreshCw, // Added for a small visual indicator
 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
@@ -113,7 +114,7 @@ const MandateModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
 };
 
 /* =====================================================
-    LEADERSHIP MODAL (Dynamic & Styled)
+    LEADERSHIP MODAL
 ===================================================== */
 
 const LeadershipModal: React.FC<{
@@ -239,16 +240,37 @@ const GuestCourtInfoPage: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<string | null>(null);
   const [selectedLeader, setSelectedLeader] = useState<any | null>(null);
   const [isMandateOpen, setIsMandateOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Use a ref to store the abortable promise for cleanup
+  const activeRequest = useRef<any>(null);
+
+  const loadData = async (silent = false) => {
+    if (!silent) setIsRefreshing(true);
+    activeRequest.current = dispatch(fetchGuestCourtInfo());
+    await activeRequest.current;
+    setIsRefreshing(false);
+  };
 
   useEffect(() => {
-    const promise = dispatch(fetchGuestCourtInfo());
+    // Initial fetch
+    loadData();
+
+    // Setup Auto-Refresh Interval (e.g., every 30 seconds)
+    const REFRESH_INTERVAL = 30000;
+    const intervalId = setInterval(() => {
+      loadData(true); // silent refresh
+    }, REFRESH_INTERVAL);
+
+    // Cleanup on unmount
     return () => {
-      promise.abort();
+      clearInterval(intervalId);
+      if (activeRequest.current) activeRequest.current.abort();
       dispatch(clearCourtError());
     };
   }, [dispatch]);
 
-  if (loading) {
+  if (loading && !divisions.length) {
     return (
       <div className="flex flex-col h-[70vh] items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-[#C5A059] border-t-[#355E3B] rounded-full animate-spin" />
@@ -259,7 +281,7 @@ const GuestCourtInfoPage: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !divisions.length) {
     return (
       <div className="max-w-xl mx-auto mt-20 p-8 text-center bg-white border border-red-100 rounded-[2rem] shadow-xl">
         <div className="text-red-500 mb-4 flex justify-center">
@@ -268,7 +290,7 @@ const GuestCourtInfoPage: React.FC = () => {
         <h2 className="text-xl font-bold text-slate-800 mb-2">Connection Error</h2>
         <p className="text-slate-500 mb-6">{error}</p>
         <button
-          onClick={() => dispatch(fetchGuestCourtInfo())}
+          onClick={() => loadData()}
           className="px-6 py-2 bg-[#355E3B] text-white rounded-full hover:bg-[#2a4a2e] transition-colors"
         >
           Retry Connection
@@ -278,7 +300,16 @@ const GuestCourtInfoPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-12 p-6 animate-in fade-in duration-1000">
+    <div className="max-w-7xl mx-auto space-y-12 p-6 animate-in fade-in duration-1000 relative">
+      
+      {/* SILENT REFRESH INDICATOR */}
+      {isRefreshing && divisions.length > 0 && (
+        <div className="fixed top-24 right-10 z-50 flex items-center gap-2 bg-white/90 backdrop-blur px-4 py-2 rounded-full border border-slate-200 shadow-sm text-[#355E3B] animate-in slide-in-from-right-4">
+          <RefreshCw size={14} className="animate-spin text-[#C5A059]" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Updating Registry...</span>
+        </div>
+      )}
+
       {/* HERO SECTION */}
       <section className="bg-white border border-slate-200 rounded-[2.5rem] p-10 text-center shadow-sm relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#355E3B] via-[#C5A059] to-[#355E3B]" />
