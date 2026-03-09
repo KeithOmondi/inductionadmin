@@ -188,7 +188,7 @@ const AdminSidebar: React.FC = () => {
               }
             >
               <GalleryThumbnails size={18} />
-              Gallary
+              Gallery
             </NavLink>
 
             <NavLink
