@@ -58,7 +58,7 @@ export default function AppRoutes() {
         <Route path="event" element={<AdminEventsPage />} />
         <Route path="oath" element={<AdminOath />} />
         <Route path="users" element={<AdminUsers />} />
-        <Route path="gallary" element={<AdminGallery />} />
+        <Route path="gallery" element={<AdminGallery />} />
         {/* Default redirect for /admin */}
         <Route index element={<Navigate to="dashboard" replace />} />
       </Route>
@@ -80,7 +80,7 @@ export default function AppRoutes() {
         <Route path="notices" element={<JudgeNoticesPages />} />
         <Route path="events" element={<JudgeEventsPage />} />
         <Route path="oath" element={<JudgesReligion />} />
-        <Route path="gallary" element={<JudgeGallery />} />
+        <Route path="gallery" element={<JudgeGallery />} />
 
         {/* Default redirect for /judge */}
         <Route index element={<Navigate to="dashboard" replace />} />
@@ -99,7 +99,7 @@ export default function AppRoutes() {
         <Route path="messages" element={<GuestMessagesPage />} />
         <Route path="notices" element={<GuestNoticesPage />} />
         <Route path="event" element={<GuestEventsPage />} />
-        <Route path="gallary" element={<GuestGallery />} />
+        <Route path="gallery" element={<GuestGallery />} />
 
       </Route>
 

@@ -105,7 +105,7 @@ const GuestSidebar = () => {
             </p>
             <NavItem icon={Calendar} label="Notice Board" to="/guest/notices" onClick={() => setIsOpen(false)} />
             <NavItem icon={FileText} label="Events" to="/guest/event" onClick={() => setIsOpen(false)} />
-            <NavItem icon={Image} label="Gallery" to="/guest/gallary" onClick={() => setIsOpen(false)} />
+            <NavItem icon={Image} label="Gallery" to="/guest/gallery" onClick={() => setIsOpen(false)} />
           </div>
         </div>
 

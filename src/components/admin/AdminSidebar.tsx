@@ -181,7 +181,7 @@ const AdminSidebar: React.FC = () => {
             </NavLink>
 
             <NavLink
-              to="/admin/gallary"
+              to="/admin/gallery"
               onClick={() => setIsOpen(false)}
               className={({ isActive }) =>
                 `${linkClass} ${isActive ? activeClass : inactiveClass}`
