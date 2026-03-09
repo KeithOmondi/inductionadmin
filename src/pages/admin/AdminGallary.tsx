@@ -89,7 +89,7 @@ const AdminGallery = () => {
     if (window.confirm("Purge this media from the cloud and registry?")) {
       const result = await dispatch(deleteMedia(id));
       if (deleteMedia.fulfilled.match(result)) {
-        toast.success("Registry entry deleted");
+        toast.success("Entry deleted");
       }
     }
   };

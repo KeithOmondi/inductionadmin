@@ -50,7 +50,7 @@ const GuestGallery = () => {
         <div className="relative z-10 text-center px-6">
           <div className="inline-flex items-center gap-2 bg-[#EFBF04]/10 border border-[#EFBF04]/20 px-4 py-1.5 rounded-full mb-6">
              <div className="w-2 h-2 rounded-full bg-[#EFBF04] animate-pulse" />
-             <span className="text-[#EFBF04] text-[10px] font-bold uppercase tracking-[0.2em]">Live Registry</span>
+             <span className="text-[#EFBF04] text-[10px] font-bold uppercase tracking-[0.2em]"></span>
           </div>
           <h1 className="text-5xl md:text-7xl font-serif font-bold text-white mb-4 tracking-tight italic">
             Event <span className="text-[#EFBF04]">Showcase</span>
@@ -173,7 +173,7 @@ const GuestGallery = () => {
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registry Date</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</p>
                     <p className="text-sm font-bold text-slate-700 flex items-center gap-2">
                       <Calendar size={14} className="text-[#355E3B]" /> {new Date(selectedMedia.createdAt).toLocaleDateString()}
                     </p>

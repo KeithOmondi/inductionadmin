@@ -63,7 +63,7 @@ const JudgeGallery = () => {
                 OFFICE OF THE REGISTRAR HIGH COURT
               </h1>
               <p className="text-[10px] text-white/50 uppercase tracking-[0.3em] font-black">
-                GALLARY ACCESS
+                GALLERRY ACCESS
               </p>
             </div>
           </div>
