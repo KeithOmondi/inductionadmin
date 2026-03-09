@@ -7,8 +7,6 @@ import {
   UserCog,
   Search,
   RefreshCw,
-  Eye,
-  EyeOff,
   Lock,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -31,15 +29,13 @@ const AdminUsers = () => {
     (state) => state.users,
   );
 
-  // Determine if current logged-in user is the master
-  const isMasterAdmin = !!MASTER_ADMIN_EMAIL && profile?.email === MASTER_ADMIN_EMAIL;
+  const isMasterAdmin =
+    !!MASTER_ADMIN_EMAIL && profile?.email === MASTER_ADMIN_EMAIL;
 
-  // Form state
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<UserRole>("guest");
-  const [showPassword, setShowPassword] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -54,9 +50,14 @@ const AdminUsers = () => {
   }, [error, dispatch]);
 
   const handleCreateUser = async () => {
-    if (!isMasterAdmin) return toast.error("Unauthorized: Master Admin access required");
-    
-    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) {
+    if (!isMasterAdmin)
+      return toast.error("Unauthorized: Master Admin access required");
+
+    if (
+      !newUserName.trim() ||
+      !newUserEmail.trim() ||
+      !newUserPassword.trim()
+    ) {
       return toast.error("All fields are mandatory for onboarding");
     }
 
@@ -70,7 +71,8 @@ const AdminUsers = () => {
         }),
       ).unwrap();
 
-      toast.success("Personnel successfully added to registry");
+      toast.success(`${newUserRole.toUpperCase()} created successfully`);
+
       setNewUserName("");
       setNewUserEmail("");
       setNewUserPassword("");
@@ -82,7 +84,12 @@ const AdminUsers = () => {
 
   const handleDeleteUser = async (id: string) => {
     if (!isMasterAdmin) return toast.error("Unauthorized action");
-    if (!window.confirm("Confirm: Permanent removal of user from ORHC records?")) return;
+    if (
+      !window.confirm(
+        "Confirm: Permanent removal of user from ORHC records?",
+      )
+    )
+      return;
 
     try {
       await dispatch(deleteAdminUser(id)).unwrap();
@@ -92,17 +99,31 @@ const AdminUsers = () => {
     }
   };
 
-  const handleChangeRole = async (currentRole: UserRole, newRole: UserRole, id: string) => {
-    // Permission Logic
-    if (currentRole === "guest" && (newRole === "admin" || newRole === "judge") && !isMasterAdmin) {
-      return toast.error("Promotion requires Master Admin authorization");
+  const handleChangeRole = async (
+    currentRole: UserRole,
+    newRole: UserRole,
+    id: string,
+  ) => {
+    if (
+      currentRole === "guest" &&
+      (newRole === "admin" || newRole === "judge") &&
+      !isMasterAdmin
+    ) {
+      return toast.error(
+        "Promotion requires Master Admin authorization",
+      );
     }
 
     if (currentRole === newRole) return;
 
     try {
-      await dispatch(updateAdminUser({ id, updates: { role: newRole } })).unwrap();
-      toast.success(`Authorization updated: ${newRole.toUpperCase()}`);
+      await dispatch(
+        updateAdminUser({ id, updates: { role: newRole } }),
+      ).unwrap();
+
+      toast.success(
+        `Authorization updated: ${newRole.toUpperCase()}`,
+      );
     } catch (err: any) {
       toast.error(err || "Failed to update authorization level");
     }
@@ -132,30 +153,33 @@ const AdminUsers = () => {
               </p>
             </div>
           </div>
+
           <button
             onClick={() => dispatch(fetchUsers())}
             className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#EFBF04]"
           >
-            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+            <RefreshCw
+              size={20}
+              className={loading ? "animate-spin" : ""}
+            />
           </button>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
+      {/* MAIN */}
       <main className="flex-1 overflow-y-auto p-8 max-w-7xl mx-auto w-full space-y-8">
-        
         {/* ONBOARDING FORM */}
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
-          
-          {/* Locked State Overlay */}
           {!isMasterAdmin && (
-            <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center transition-all">
-               <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-2xl flex flex-col items-center gap-2">
-                  <div className="bg-red-50 p-2 rounded-full text-red-500">
-                    <Lock size={20} />
-                  </div>
-                  <span className="text-slate-800 font-bold text-xs uppercase tracking-widest">Master Admin Only</span>
-               </div>
+            <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-2xl flex flex-col items-center gap-2">
+                <div className="bg-red-50 p-2 rounded-full text-red-500">
+                  <Lock size={20} />
+                </div>
+                <span className="text-slate-800 font-bold text-xs uppercase tracking-widest">
+                  Master Admin Only
+                </span>
+              </div>
             </div>
           )}
 
@@ -168,7 +192,9 @@ const AdminUsers = () => {
 
           <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Full Name</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                Full Name
+              </label>
               <input
                 type="text"
                 disabled={!isMasterAdmin}
@@ -179,7 +205,9 @@ const AdminUsers = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Secure Email</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                Secure Email
+              </label>
               <input
                 type="email"
                 disabled={!isMasterAdmin}
@@ -190,32 +218,29 @@ const AdminUsers = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Access Key</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  disabled={!isMasterAdmin}
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#355E3B] outline-none disabled:cursor-not-allowed"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                Access Key
+              </label>
+              <input
+                type="password"
+                disabled={!isMasterAdmin}
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#355E3B] outline-none disabled:cursor-not-allowed"
+              />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Designation</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
+                Designation
+              </label>
               <select
                 disabled={!isMasterAdmin}
                 value={newUserRole}
-                onChange={(e) => setNewUserRole(e.target.value as UserRole)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#355E3B] font-bold text-slate-700 outline-none disabled:cursor-not-allowed"
+                onChange={(e) =>
+                  setNewUserRole(e.target.value as UserRole)
+                }
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 outline-none disabled:cursor-not-allowed"
               >
                 <option value="guest">Guest</option>
                 <option value="judge">Judge</option>
@@ -228,7 +253,8 @@ const AdminUsers = () => {
               disabled={loading || !isMasterAdmin}
               className="bg-[#355E3B] hover:bg-[#2a4b2f] text-white rounded-xl px-6 py-2.5 font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 h-[42px]"
             >
-              <UserPlus size={18} /> {loading ? "..." : "Onboard"}
+              <UserPlus size={18} />
+              {loading ? "..." : "Onboard"}
             </button>
           </div>
         </section>
