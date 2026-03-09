@@ -209,6 +209,7 @@ const AdminUsers = () => {
                 type="text"
                 disabled={!isMasterAdmin}
                 value={newUserName}
+                placeholder="i.e John Doe"
                 onChange={(e) => setNewUserName(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#355E3B] outline-none disabled:cursor-not-allowed"
               />
@@ -222,6 +223,7 @@ const AdminUsers = () => {
                 type="email"
                 disabled={!isMasterAdmin}
                 value={newUserEmail}
+                placeholder="example@gmail.com"
                 onChange={(e) => setNewUserEmail(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#355E3B] outline-none disabled:cursor-not-allowed"
               />
@@ -229,10 +231,11 @@ const AdminUsers = () => {
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 uppercase ml-1">
-                Access Key
+                Secure Password
               </label>
               <input
                 type="password"
+                placeholder="***************"
                 disabled={!isMasterAdmin}
                 value={newUserPassword}
                 onChange={(e) => setNewUserPassword(e.target.value)}
