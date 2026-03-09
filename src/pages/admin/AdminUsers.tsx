@@ -16,6 +16,7 @@ import {
   deleteAdminUser,
   fetchUsers,
   updateAdminUser,
+  fetchProfile, // Added this to sync profile
 } from "../../store/slices/adminUserSlice";
 
 type UserRole = "admin" | "judge" | "guest";
@@ -25,12 +26,16 @@ const MASTER_ADMIN_EMAIL = import.meta.env.VITE_MASTER_ADMIN_EMAIL;
 
 const AdminUsers = () => {
   const dispatch = useAppDispatch();
-  const { users, loading, error, profile } = useAppSelector(
-    (state) => state.users,
-  );
 
+  // 1. Get Registry data from users slice
+  const { users, loading, error } = useAppSelector((state) => state.users);
+  
+  // 2. Get Logged-in User from auth slice (This is the fix)
+  const { user: authUser } = useAppSelector((state) => state.auth);
+
+  // 3. Logic: Check if the current user's email matches the Master Admin record
   const isMasterAdmin =
-    !!MASTER_ADMIN_EMAIL && profile?.email === MASTER_ADMIN_EMAIL;
+    !!MASTER_ADMIN_EMAIL && authUser?.email === MASTER_ADMIN_EMAIL;
 
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -40,6 +45,7 @@ const AdminUsers = () => {
 
   useEffect(() => {
     dispatch(fetchUsers());
+    dispatch(fetchProfile()); // Ensure the user profile is loaded into the registry state
   }, [dispatch]);
 
   useEffect(() => {
@@ -86,7 +92,7 @@ const AdminUsers = () => {
     if (!isMasterAdmin) return toast.error("Unauthorized action");
     if (
       !window.confirm(
-        "Confirm: Permanent removal of user from ORHC records?",
+        "Confirm: Permanent removal of user from records?",
       )
     )
       return;
@@ -104,6 +110,7 @@ const AdminUsers = () => {
     newRole: UserRole,
     id: string,
   ) => {
+    // Prevent non-master admins from promoting others to Admin/Judge
     if (
       currentRole === "guest" &&
       (newRole === "admin" || newRole === "judge") &&
@@ -155,7 +162,10 @@ const AdminUsers = () => {
           </div>
 
           <button
-            onClick={() => dispatch(fetchUsers())}
+            onClick={() => {
+                dispatch(fetchUsers());
+                dispatch(fetchProfile());
+            }}
             className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#EFBF04]"
           >
             <RefreshCw
@@ -319,7 +329,8 @@ const AdminUsers = () => {
                     <td className="px-6 py-5">
                       <select
                         value={user.role}
-                        disabled={user.email === MASTER_ADMIN_EMAIL} // Cannot change master admin role
+                        // Important: Only Master Admin can change roles of other Admins
+                        disabled={user.email === MASTER_ADMIN_EMAIL || !isMasterAdmin}
                         onChange={(e) => handleChangeRole(user.role, e.target.value as UserRole, user._id)}
                         className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-[11px] font-bold outline-none cursor-pointer disabled:cursor-not-allowed"
                       >
